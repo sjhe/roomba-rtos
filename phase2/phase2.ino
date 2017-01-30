@@ -1,3 +1,5 @@
+#include "scheduler.h"
+
 #include <Wire.h>  // Comes with Arduino IDE
 #include <LiquidCrystal_I2C.h>
 #include <Servo.h> // Servo lib
@@ -41,6 +43,14 @@ void setup() {
 
   lcd.setCursor(0, 0);
   lcd.print("HELLO");
+
+  Scheduler_Init();
+
+  Scheduler_StartTask(0, 500, update_lcd);
+  
+  Scheduler_StartTask(250, 1000, first_counter);
+  Scheduler_StartTask(300, 500, second_counter);
+  
   
 //  panServo.attach(PAN_SERVO_PIN);     // Pan servo
 //  tiltServo.attach(TILT_SERVO_PIN);   // Tilt Servo
@@ -49,7 +59,28 @@ void setup() {
 //  delay(500);
 }
 
+int counter = 0;
+int counter2 = 0;
 
+void update_lcd()
+{
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(counter);
+
+  lcd.setCursor(0, 1);
+  lcd.print(counter2);
+}
+
+void first_counter()
+{
+  counter++;
+}
+
+void second_counter()
+{
+  counter2++;
+}
 
 // turns laser on if inputValue is 0 and off otherwise.
 void laserState(int inputValue)
@@ -121,7 +152,17 @@ void parseAndExecuteJoystickInput()
 }
 
 
-void loop() {
+void loop()
+{ 
+  uint32_t idle_period = Scheduler_Dispatch();
+  if (idle_period)
+  {
+    delay(idle_period);
+  }
+  
+}
+
+void loop2() {
   // put your main code here, to run repeatedly:
     
   int joystickX = analogRead(JOYSTICK_X_PIN);

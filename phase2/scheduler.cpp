@@ -7,7 +7,7 @@
  */
 #include "scheduler.h"
 
-#include "arduino/Arduino.h"
+#include "Arduino.h"
 #include <avr/interrupt.h>
 
 typedef struct
