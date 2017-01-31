@@ -8,7 +8,7 @@
 #define JOYSTICK_Y_PIN       A1
 #define PHOTORESISTOR_PIN    A5
 
-//PWM 
+//PWM
 #define TILT_SERVO_PIN        8
 #define PAN_SERVO_PIN         9
 #define LASER_PIN            10
@@ -31,18 +31,18 @@ const int maxStepAngle = 5;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);     
+  Serial.begin(9600);
   Serial1.begin(9600);
-  
-//  pinMode(LASER_PIN, OUTPUT);
 
-  lcd.begin(16,2);   // initialize the lcd for 16 chars 2 lines, turn on backlight
+  //  pinMode(LASER_PIN, OUTPUT);
+
+  lcd.begin(16, 2);  // initialize the lcd for 16 chars 2 lines, turn on backlight
   lcd.setCursor(0, 0);
 
   Scheduler_Init();
 
   Scheduler_StartTask(0, 500, update_lcd);
-  Scheduler_StartTask(0, 50, roombaTasks);  
+  Scheduler_StartTask(0, 50, roombaTasks);
   Scheduler_StartTask(0, 25, inputTasks);
 }
 
@@ -65,31 +65,31 @@ void laserState(int inputValue)
   }
 }
 
-int getJoyStickPercentage(int x){
+int getJoyStickPercentage(int x) {
   int mapped  = map(x, 0 , 1000, -maxStepAngle, maxStepAngle );
-  if(  -2 <= mapped && mapped <= 2 ){
+  if (  -2 <= mapped && mapped <= 2 ) {
     mapped = 0;
   }
 
   return mapped;
 }
 
-void centerServoPosition(){
+void centerServoPosition() {
   panServo.write(90);
   tiltServo.write(90);
 }
 
-void servoMovement(Servo theServo, int angle, int* servoAngle, int minAngle, int maxAngle){
-   *servoAngle += angle;
-   if (*servoAngle >= maxAngle ) 
-   {
-      *servoAngle = maxAngle;
-   } 
-   else if (*servoAngle <= minAngle) 
-   {
-      *servoAngle = minAngle;
-   }
-   
+void servoMovement(Servo theServo, int angle, int* servoAngle, int minAngle, int maxAngle) {
+  *servoAngle += angle;
+  if (*servoAngle >= maxAngle )
+  {
+    *servoAngle = maxAngle;
+  }
+  else if (*servoAngle <= minAngle)
+  {
+    *servoAngle = minAngle;
+  }
+
   theServo.write(*servoAngle);
 }
 
@@ -99,13 +99,13 @@ void parseAndExecuteJoystickInput()
   int joystickY = analogRead(JOYSTICK_Y_PIN);
   int joystickButton = digitalRead(JOYSTICK_PIN_BUTTON);
 
-  laserState(joystickButton);  
+  laserState(joystickButton);
 }
 
 
 void servoTasks()
 {
-  
+
 }
 
 void createCommand(char* dest, char* inputCommand, int inputSpeed)
@@ -114,7 +114,7 @@ void createCommand(char* dest, char* inputCommand, int inputSpeed)
   if (inputSpeed != 0)
   {
     char speedBuffer[32] = "";
-    strcat(dest, ",");    
+    strcat(dest, ",");
     sprintf(speedBuffer, "%d", inputSpeed);
     strcat(dest, speedBuffer);
   }
@@ -126,19 +126,13 @@ char btCommand[32] = "";
 char lastBtCommand[32] = "";
 int joystickPrevState = 0;
 void inputTasks()
-{ 
+{
   int joystickX = analogRead(JOYSTICK_X_PIN);
   int joystickY = analogRead(JOYSTICK_Y_PIN);
   int joystickButton = digitalRead(JOYSTICK_PIN_BUTTON);
 
-  int mx = getJoyStickPercentage(joystickX);
-  int my = getJoyStickPercentage(joystickY);
-
-//  if (my > 0) createCommand(btCommand, "f", my);
-//  else if (my < 0) createCommand(btCommand, "b", my);
-//  else if (mx > 0) createCommand(btCommand, "r", mx);
-//  else if (mx < 0) createCommand(btCommand, "l", mx);
-//  else createCommand(btCommand, "s", 0);
+  int mx = -getJoyStickPercentage(joystickX);
+  int my = -getJoyStickPercentage(joystickY);
 
   if (my > 0) createCommand(btCommand, "r,f", my);
   else if (my < 0) createCommand(btCommand, "r,b", my);
@@ -149,19 +143,16 @@ void inputTasks()
   else createCommand(btCommand, "r,s", 0);
 
   joystickPrevState = joystickButton;
-  
+
   // if last command does not equal current command then send
   if (strcmp(lastBtCommand, btCommand) != 0)
   {
-//    Serial.print(btCommand);
-//    Serial.print(" | " );    
-//    Serial.println(lastBtCommand);
+    Serial.println(btCommand);
     Serial1.print(btCommand);
   }
 
-  strcpy(lastBtCommand, btCommand);  
+  strcpy(lastBtCommand, btCommand);
   btCommand[0] = '\0';
-
 }
 
 void roombaTasks()
@@ -178,24 +169,24 @@ void roombaTasks()
   lcd.print(joystickY);
   lcd.print(" | " );
   lcd.print(photoResistor);
-  
+
   lcd.setCursor(0, 1);
   lcd.print(joystickButton);
 
   int mx = getJoyStickPercentage(joystickX);
-  lcd.setCursor(5,1);
+  lcd.setCursor(5, 1);
   lcd.print(mx);
   int my = getJoyStickPercentage(joystickY);
-  lcd.setCursor(8,1);
+  lcd.setCursor(8, 1);
   lcd.print(my);
 
-//  if(Serial.available()){
-//    Serial1.print((char)Serial.read());
-////    Serial1.print(mx);
-//  }
-//  if(Serial1.available()){
-//    Serial.print((char)Serial1.read());
-//  }  
+  //  if(Serial.available()){
+  //    Serial1.print((char)Serial.read());
+  ////    Serial1.print(mx);
+  //  }
+  //  if(Serial1.available()){
+  //    Serial.print((char)Serial1.read());
+  //  }
 
 
 }
@@ -213,29 +204,29 @@ void loop2() {
   lcd.print(joystickY);
   lcd.print(" | " );
   lcd.print(photoResistor);
-  
+
   lcd.setCursor(0, 1);
   lcd.print(joystickButton);
 
   int mx = getJoyStickPercentage(joystickX);
-  lcd.setCursor(5,1);
+  lcd.setCursor(5, 1);
   lcd.print(mx);
   int my = getJoyStickPercentage(joystickY);
-  lcd.setCursor(8,1);
+  lcd.setCursor(8, 1);
   lcd.print(my);
 
-  if(Serial.available()){
+  if (Serial.available()) {
     Serial1.print((char)Serial.read());
-//    Serial1.print(mx);
+    //    Serial1.print(mx);
   }
-  if(Serial1.available()){
+  if (Serial1.available()) {
     Serial.print((char)Serial1.read());
-  }  
+  }
 
 }
 
 void loop()
-{ 
+{
   uint32_t idle_period = Scheduler_Dispatch();
   if (idle_period)
   {
