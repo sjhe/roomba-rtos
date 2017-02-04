@@ -1,20 +1,20 @@
 #include "Roomba_Driver.h"
 #include <Servo.h> // Servo lib
-
+#include "scheduler.h"  // TTS
 
 //Roomba
-#define ROOMBA_ANALOG_PIN     2
-#define ROOMBA_DIGITA_PIN     44
+#define ROOMBA_SERIAL_PIN     2
+#define ROOMBA_DIGITA_PIN     30
 
-Roomba r(ROOMBA_ANALOG_PIN, ROOMBA_DIGITA_PIN);
+Roomba r(ROOMBA_SERIAL_PIN, ROOMBA_DIGITA_PIN);
 
 //PWM 
 #define TILT_SERVO_PIN        8
 #define PAN_SERVO_PIN         9
 #define LASER_PIN            10
 
-
-
+#define TEST_PIN             45
+#define TEST_PIN_2           39
 unsigned long next_time = 1;
 unsigned long runtime = 0;
 bool initialized = true;
@@ -41,13 +41,18 @@ const int maxStepAngle = 5;
 char currentState = 'i';   // Current state of the roomba
 
 void setup() {
-  Serial.begin(9600);
+//  Serial.begin(9600);
   Serial1.begin(9600);
   Serial1.print("Starting init");
   r.init();
   pinMode(LASER_PIN, OUTPUT);
+  pinMode(TEST_PIN, OUTPUT);
+  pinMode(TEST_PIN_2, OUTPUT);
+  delay(1000); 
 
-  delay(1000);
+  Scheduler_Init();
+  Scheduler_StartTask(0, 25, ReceiveInputTask);
+  Scheduler_StartTask(0, 100, RoobaTasks);
 
 
 //  centerServoPosition();
@@ -66,29 +71,38 @@ void centerServoPosition(){
 
 char* device = ' ';
 
-int joystickButton = 0;    // Global value for controlling the laser
+char* joystickButton;    // Global value for controlling the laser
+
+//Roomba
+char* roombaDirection = "s"; 
+char* roombaSpeed     = "0";
 
 void parseInputStringAndUpdate(){
   int count = 0;
   token = strtok(btInput, s);
   while( token != NULL ) 
   {
-//    Serial.println( token );
     if(count == 0 ){   // First token
       device = token;
-//      Serial.print("Device : ");
-//      Serial.println(device);
     }
     if(count == 1){   // Second Token
       if(*device == 'l'){  
-        laserState(token);
-        
+        joystickButton = token;
+      }else if(*device == 'r'){
+        roombaDirection = token;
+      }
+    }
+    if(count == 2){
+      if(*device == 'r'){
+        roombaSpeed = token;
       }
     }
     token = strtok(NULL, s);
     count++;
-  }   
-
+  } 
+  if(count < 2){
+     roombaSpeed = "0";
+  }
 }
 
 // turns laser on if inputValue is 0 and off otherwise.
@@ -106,40 +120,63 @@ void laserState(char* inputValue)
   }
 }
 
-
-
-void loop() {
-  if(Serial1.available()) {
+//ReceiveInputTask 
+void ReceiveInputTask() {
+  while(Serial1.available()) {
+     digitalWrite(TEST_PIN_2, HIGH);
     //Make sure the Roomba is ready to go.
     char command = Serial1.read();
+    
     if (command != '*')
     {
       *inputBuffer = command;
       strcat(btInput, inputBuffer);
     } 
     else
-    {  
+    { 
       //execute bt input
+//      Serial.println(btInput);
+      digitalWrite(TEST_PIN, HIGH);
       parseInputStringAndUpdate();
-        
       laserState(joystickButton);
-
+      digitalWrite(TEST_PIN, LOW);
       btInput[0] = '\0';
     }
+  }
+  digitalWrite(TEST_PIN_2, LOW);
+}
+
+
+//ReceiveInputTask 
+void RoobaTasks() {
+  if(!initialized) {
+    r.init();
+    initialized = true;
+  }
+
+  digitalWrite(TEST_PIN_2, HIGH);
+  char command     = ' ';
+  int  speed = 0;
+
+  if(roombaDirection[0]){
+    command = roombaDirection[0];
+  }
+  
+  if(roombaSpeed[0]){
+    speed = roombaSpeed[0];
+  }
     
-    if(!initialized) {
-      r.init();
-      initialized = true;
-    }
- 
-    switch(command)
+//  int  mappedSpeed  = map(roomb, 0 , 32768, -maxStepAngle, maxStepAngle );
+  
+  switch(command)
     {
       case 'f': 
-        r.drive(150, 32768);
+//        Serial.println("Driving Roomba");
+        r.drive(500, 32768);
         currentState = 'f';
         break;
       case 'b':
-        r.drive(-150, 32768);
+        r.drive(-500, 32768);
         currentState = 'b';
         break;
       case 'r':
@@ -151,6 +188,7 @@ void loop() {
         currentState = 'l';
         break;
       case 's':
+//        Serial.println("Stopping Roomba");
         r.drive(0,0);
         currentState = 's';
         break;
@@ -167,25 +205,19 @@ void loop() {
         currentState = 'i';
         break;
     }
+    
+   
+  digitalWrite(TEST_PIN_2, LOW);
+}
+
+
+
+
+void loop()
+{
+  uint32_t idle_period = Scheduler_Dispatch();
+  if (idle_period)
+  {
+    delay(idle_period);
   }
-
-  //Watch power levels and run time.
-  if(runtime > next_time) {
-    next_time += 5000;
-    unsigned int power = 0;
-    bool success = r.check_power(&power);
-//    Serial1.print("Power: ");
-//    Serial1.println(power);
-
-    if (success && (power < 2000 || runtime > 3600000u)) {
-//      Serial1.println("Shutting down!");
-      r.power_off();
-      initialized = false;
-      runtime = 0;
-      next_time = 0;
-    }
-  }
-
-  delay(25);
-  runtime += 25 ;
 }
