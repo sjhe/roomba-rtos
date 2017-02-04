@@ -75,10 +75,10 @@ void update_lcd()
   lcd.print(", " );
   lcd.print(joystickSY);
 
-  int mx = getJoyStickPercentage(joystickRX);
+  int mx = getJoyStickPercentage(joystickSX);
   lcd.print(" | " );
   lcd.print(mx);
-  int my = getJoyStickPercentage(joystickRY);
+  int my = getJoyStickPercentage(joystickSY);
   lcd.print(", " );
   lcd.print(my);
 
@@ -141,9 +141,27 @@ void parseAndExecuteJoystickInput()
   laserState(joystickButton);
 }
 
+void createServoCommand(char* dest, char* inputCommand, int inputSpeedX, int inputSpeedY)
+{
+  strcat(dest, inputCommand);
+
+  char speedBuffer[32] = "";
+  strcat(dest, ",");
+  sprintf(speedBuffer, "%d", inputSpeedX);
+  strcat(dest, speedBuffer);
+
+  speedBuffer[0] = '\0';
+  strcat(dest, ",");
+  sprintf(speedBuffer, "%d", inputSpeedY);
+  strcat(dest, speedBuffer);
+
+  strcat(dest, "*");  
+}
+
 void createCommand(char* dest, char* inputCommand, int inputSpeed)
 {
   strcat(dest, inputCommand);
+
   if (inputSpeed != 0)
   {
     char speedBuffer[32] = "";
@@ -167,13 +185,10 @@ void servoTasks()
   int mx = -getJoyStickPercentage(joystickX);
   int my = -getJoyStickPercentage(joystickY);
 
-  if (my > 0) createCommand(btServoCommand, "s,f", my);
-  else if (my < 0) createCommand(btServoCommand, "s,b", my);
-  else if (mx > 0) createCommand(btServoCommand, "s,r", mx);
-  else if (mx < 0) createCommand(btServoCommand, "s,l", mx);
+  if (mx != 0 || my != 0) createServoCommand(btServoCommand, "s", mx, my);
   else if (joystickButton == 0) createCommand(btServoCommand, "l,0", 0);
   else if (strcmp(lastBtServoCommand, btServoCommand) != 0 && joystickButton == 1 && joystickButtonPrevState == 0) createCommand(btServoCommand, "l,1", 0);
-  else createCommand(btServoCommand, "s,s", 0);
+  else createServoCommand(btServoCommand, "s", 0, 0);
   
   joystickButtonPrevState = joystickButton;
 
