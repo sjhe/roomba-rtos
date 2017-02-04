@@ -1,3 +1,5 @@
+#include <Wire.h>  // Comes with Arduino IDE
+
 #include "Roomba_Driver.h"
 #include <Servo.h> // Servo lib
 #include "scheduler.h"  // TTS
@@ -29,43 +31,41 @@ const char s[2] = ",";
 
 
 Servo panServo;     //PAN SERVO MOTOR (X)
-
-int panAngle = 90;
+int panAngle = 90;  // Init angle to 90
 
 Servo tiltServo;    //TILT SERVO Motor (Y)
 
-int tiltAngle = 90;
+int tiltAngle = 90; // Init angle to 90
 
-const int maxStepAngle = 5;
+const int maxStepAngle = 5;   // init max step angle
 
 char currentState = 'i';   // Current state of the roomba
 
 void setup() {
-//  Serial.begin(9600);
+  Serial.begin(9600);
   Serial1.begin(9600);
   Serial1.print("Starting init");
   r.init();
   pinMode(LASER_PIN, OUTPUT);
   pinMode(TEST_PIN, OUTPUT);
   pinMode(TEST_PIN_2, OUTPUT);
+  panServo.attach(PAN_SERVO_PIN);     // Pan servo
+  tiltServo.attach(TILT_SERVO_PIN);   // Tilt Servo
+  centerServoPosition();
+  
   delay(1000); 
 
   Scheduler_Init();
   Scheduler_StartTask(0, 25, ReceiveInputTask);
   Scheduler_StartTask(0, 100, RoobaTasks);
+  Scheduler_StartTask(0, 50, ServoTasks);
 
 
-//  centerServoPosition();
-//  panServo.attach(PAN_SERVO_PIN);     // Pan servo
-//  tiltServo.attach(TILT_SERVO_PIN);   // Tilt Servo
+
 }
 
 
-// Center the servo motors
-void centerServoPosition(){
-  panServo.write(90);
-  tiltServo.write(90);
-}
+
 
 // INPUT EXAMPLE: "f,100,s*"
 
@@ -76,6 +76,14 @@ char* joystickButton;    // Global value for controlling the laser
 //Roomba
 char* roombaDirection = "s"; 
 char* roombaSpeed     = "0";
+
+//Servo
+char* servoName       = " ";
+int  servoPanSpeed    = 0;
+int  servoTiltSpeed   = 0;
+
+
+
 
 void parseInputStringAndUpdate(){
   int count = 0;
@@ -88,20 +96,31 @@ void parseInputStringAndUpdate(){
     if(count == 1){   // Second Token
       if(*device == 'l'){  
         joystickButton = token;
+        Serial.println(joystickButton);
       }else if(*device == 'r'){
         roombaDirection = token;
+      }else if(*device == 's'){
+        servoPanSpeed = atoi(token);
       }
     }
     if(count == 2){
       if(*device == 'r'){
         roombaSpeed = token;
+      }else{
+        if(*device == 's'){
+        servoTiltSpeed = atoi(token);
+        }
       }
+      
     }
+    
     token = strtok(NULL, s);
     count++;
   } 
   if(count < 2){
      roombaSpeed = "0";
+  }else if(count > 2){
+     joystickButton = "1";
   }
 }
 
@@ -135,7 +154,7 @@ void ReceiveInputTask() {
     else
     { 
       //execute bt input
-//      Serial.println(btInput);
+      Serial.println(btInput);
       digitalWrite(TEST_PIN, HIGH);
       parseInputStringAndUpdate();
       laserState(joystickButton);
@@ -147,7 +166,7 @@ void ReceiveInputTask() {
 }
 
 
-//ReceiveInputTask 
+//Roomba Tasks
 void RoobaTasks() {
   if(!initialized) {
     r.init();
@@ -205,11 +224,55 @@ void RoobaTasks() {
         currentState = 'i';
         break;
     }
-    
-   
   digitalWrite(TEST_PIN_2, LOW);
 }
 
+
+// Servo Functions
+// get joystickpercentage
+int getJoyStickPercentage(int x){
+  int mapped  = map(x, 0 , 1023, -maxStepAngle, maxStepAngle );
+//  Serial.print(mapped);
+  if(  -2 <= mapped && mapped <= 2 ){
+    mapped = 0;
+  }
+  return mapped;
+}
+
+void servoMovement(Servo inputServo, int angle, int* servoAngle, int minAngle, int maxAngle){    
+   *servoAngle += angle;
+   Serial.print("Servo Angle : ");
+   Serial.println(*servoAngle);
+   
+   if( *servoAngle >= maxAngle ){
+      *servoAngle = maxAngle;
+   }else if( *servoAngle <= minAngle){
+      *servoAngle = minAngle;
+   }
+  // in steps of 1 degree
+  inputServo.write(*servoAngle);        // tell servo to go to position in variable 'pos'
+  
+}
+// End Servo Functions
+
+// Center the servo motors
+void centerServoPosition(){
+  panServo.write(90);
+  tiltServo.write(90);
+}
+// Servo Tasks
+void ServoTasks(){
+  // ------ Servo Motor data -------
+
+//  Serial.print("Pan Angle : " );
+//  Serial.println(servoPanSpeed);
+//
+//  Serial.print("Tilt Angle : " );
+//  Serial.println(servoTiltSpeed);
+
+  servoMovement( panServo,servoPanSpeed, &panAngle   ,45, 135);  
+  servoMovement( tiltServo, servoTiltSpeed, &tiltAngle ,60, 135 );  
+}
 
 
 
