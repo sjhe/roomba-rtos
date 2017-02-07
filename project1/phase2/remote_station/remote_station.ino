@@ -53,16 +53,11 @@ void setup() {
   centerServoPosition();
   
   delay(1000); 
-
   Scheduler_Init();
   Scheduler_StartTask(0, 25, ReceiveInputTask);
-  Scheduler_StartTask(0, 50, RoobaTasks);
-  Scheduler_StartTask(0, 50, ServoTasks);
-
+  Scheduler_StartTask(50, 100, RoobaTasks);
+  Scheduler_StartTask(175, 50, ServoTasks);
 }
-
-
-
 
 // INPUT EXAMPLE: "f,100,s*"
 
@@ -196,12 +191,8 @@ void RoobaTasks() {
   switch(command)
     {
       case 'd':   //Drive State
-
-
-        if(localSpeed <= 500 && localSpeed >= -500 && localRadious >= 0 && localRadious <= 32768){
-          if(localSpeed == 0){
-            
-            Serial.print("Stopping Roomba ");
+        if(localSpeed <= 500 && localSpeed >= -500 && localRadious <= 32768){
+          if(localSpeed == 0){  // Stop roomba if speed is 0
             r.drive(0, 0); 
           }else{
             Serial.print("speed: ");
@@ -215,21 +206,6 @@ void RoobaTasks() {
           r.drive(0, 0);   // Stop the roomba if input value is wrong 
         }
         break;
-//      case 'f': 
-//        r.drive(500, 2000);
-//        break;
-//      case 'b':
-//        r.drive(-500, 2000);
-//        roombaState = 'b';
-//        break;
-//      case 'r':
-//        r.drive(-50, 1);
-//        roombaState = 'r';
-//        break;
-//      case 'l':
-//        r.drive(50, 1);
-//        roombaState = 'l';
-//        break;
       case 's':
         r.drive(0,0);
         roombaState = 's';
