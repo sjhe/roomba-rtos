@@ -208,12 +208,13 @@ void RoobaTasks() {
             Serial.println(localSpeed);
             Serial.print(" radious: ");
             Serial.println(localRadious);
-            r.drive(300, 1);
+            r.drive(localSpeed, localRadious);
             roombaState = 'd';
           }
         }else{
           r.drive(0, 0);   // Stop the roomba if input value is wrong 
         }
+        break;
 //      case 'f': 
 //        r.drive(500, 2000);
 //        break;

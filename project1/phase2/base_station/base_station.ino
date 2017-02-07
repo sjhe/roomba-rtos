@@ -75,10 +75,10 @@ void update_lcd()
   lcd.print(", " );
   lcd.print(joystickSY);
 
-  int mx = getJoyStickPercentage(joystickSX);
+  int mx = getJoyStickPercentage(joystickSX, 5, 2);
   lcd.print(" | " );
   lcd.print(mx);
-  int my = getJoyStickPercentage(joystickSY);
+  int my = getJoyStickPercentage(joystickSY, 5, 2);
   lcd.print(", " );
   lcd.print(my);
 
@@ -104,9 +104,11 @@ void laserState(int inputValue)
   }
 }
 
-int getJoyStickPercentage(int x) {
-  int mapped  = map(x, 0 , 1000, -maxStepAngle, maxStepAngle );
-  if (  -2 <= mapped && mapped <= 2 ) {
+int getJoyStickPercentage(int x, int maxStep, int deadZone) {
+//  int mapped  = map(x, 0 , 1000, -maxStepAngle, maxStepAngle );
+  int mapped  = map(x, 0 , 1023, -maxStep, maxStep);
+//  if (  -2 <= mapped && mapped <= 2 ) {
+  if (-deadZone <= mapped && mapped <= deadZone) {
     mapped = 0;
   }
 
@@ -182,8 +184,8 @@ void servoTasks()
   int joystickY = analogRead(JOYSTICK_S_Y_PIN);
   int joystickButton = digitalRead(JOYSTICK_PIN_BUTTON);
 
-  int mx = -getJoyStickPercentage(joystickX);
-  int my = -getJoyStickPercentage(joystickY);
+  int mx = -getJoyStickPercentage(joystickX, 5, 2);
+  int my = -getJoyStickPercentage(joystickY, 5, 2);
 
   if (mx != 0 || my != 0) createServoCommand(btServoCommand, "s", mx, my);
   else if (joystickButton == 0) createCommand(btServoCommand, "l,0", 0);
@@ -210,14 +212,30 @@ void roombaTasks()
   int joystickX = analogRead(JOYSTICK_R_X_PIN);
   int joystickY = analogRead(JOYSTICK_R_Y_PIN);
 
-  int mx = -getJoyStickPercentage(joystickX);
-  int my = -getJoyStickPercentage(joystickY);
+  int mx = getJoyStickPercentage(joystickX, 300, 150);
+  int my = -getJoyStickPercentage(joystickY, 300, 150);
 
-  if (my > 0) createCommand(btCommand, "r,f", my);
-  else if (my < 0) createCommand(btCommand, "r,b", my);
-  else if (mx > 0) createCommand(btCommand, "r,r", mx);
-  else if (mx < 0) createCommand(btCommand, "r,l", mx);
-  else createCommand(btCommand, "r,s", 0);
+//  int drivePower = sqrt(mx * mx + my * my) * 10;
+  int drivePower = my;
+//  if (my > 0 || mx > 0) drivePower *= -1;
+  
+  
+  int angle = 2000;
+  if (joystickX < 512) angle = map(joystickX, 0, 512, 1, 200) * 10;
+  else angle = map(joystickX, 512, 1023, 200, 1) * 10;
+
+  if (angle > 1800) angle = 2000;
+  else if (angle < 50) angle = 1;
+
+  createServoCommand(btCommand, "r,d", drivePower, angle);
+//  if (mx != 0 && my != 0) createServoCommand(btCommand, "r,d", drivePower, angle);
+//  else createCommand(btCommand, "r,s", 0);
+
+//  if (my > 0) createCommand(btCommand, "r,f", my);
+//  else if (my < 0) createCommand(btCommand, "r,b", my);
+//  else if (mx > 0) createCommand(btCommand, "r,l", mx);
+//  else if (mx < 0) createCommand(btCommand, "r,r", mx);
+//  else createCommand(btCommand, "r,s", 0);
 
   // if last command does not equal current command then send
   if (strcmp(lastBtCommand, btCommand) != 0)
