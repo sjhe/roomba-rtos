@@ -39,7 +39,6 @@ int tiltAngle = 90; // Init angle to 90
 
 const int maxStepAngle = 5;   // init max step angle
 
-char currentState = 'i';   // Current state of the roomba
 
 void setup() {
   Serial.begin(9600);
@@ -57,10 +56,8 @@ void setup() {
 
   Scheduler_Init();
   Scheduler_StartTask(0, 25, ReceiveInputTask);
-  Scheduler_StartTask(0, 100, RoobaTasks);
+  Scheduler_StartTask(0, 50, RoobaTasks);
   Scheduler_StartTask(0, 50, ServoTasks);
-
-
 
 }
 
@@ -76,6 +73,8 @@ char* joystickButton;    // Global value for controlling the laser
 //Roomba
 char* roombaDirection = "s"; 
 char* roombaSpeed     = "0";
+char* roombaRadious   = "0";
+char roombaState = 'i';   // Roomba State of the roomba
 
 //Servo
 char* servoName       = " ";
@@ -98,20 +97,30 @@ void parseInputStringAndUpdate(){
         joystickButton = token;
         Serial.println(joystickButton);
       }else if(*device == 'r'){
-        roombaDirection = token;
+        roombaDirection = token;  // Update 
       }else if(*device == 's'){
         servoPanSpeed = atoi(token);
       }
     }
-    if(count == 2){
-      if(*device == 'r'){
-        roombaSpeed = token;
+    if(count == 2){   // check the third token if there is one
+      if(*device == 'r' && *roombaDirection == 'd' ){     // Roomba command && drive mode
+        roombaSpeed = token;   //Speed should be between -500 to 500
       }else{
-        if(*device == 's'){
-        servoTiltSpeed = atoi(token);
+        if(*device == 's'){  //  Servo Command
+          servoTiltSpeed = atoi(token);  
+        }else{
+          roombaSpeed = token;
         }
       }
-      
+    }
+    if(count == 3){   // check the forth token if there is one
+      if(*device == 'r'){     // Roomba command
+        roombaRadious = token;    // Radious should be betweej 0 to 2000
+      }else{
+        // unknown case
+        Serial1.print("4th token = ");
+        Serial1.print(token);
+      }
     }
     
     token = strtok(NULL, s);
@@ -175,53 +184,66 @@ void RoobaTasks() {
 
   digitalWrite(TEST_PIN_2, HIGH);
   char command     = ' ';
-  int  speed = 0;
+  int localRadious = 0;
+  int localSpeed   = 0;
+  sscanf(roombaRadious, "%d", &localRadious);
+  sscanf(roombaSpeed, "%d", &localSpeed);
 
-  if(roombaDirection[0]){
-    command = roombaDirection[0];
+  if(roombaDirection[0]){  
+    command = roombaDirection[0];  // Get the command digit
   }
-  
-  if(roombaSpeed[0]){
-    speed = roombaSpeed[0];
-  }
-    
-//  int  mappedSpeed  = map(roomb, 0 , 32768, -maxStepAngle, maxStepAngle );
   
   switch(command)
     {
-      case 'f': 
-//        Serial.println("Driving Roomba");
-        r.drive(500, 32768);
-        currentState = 'f';
-        break;
-      case 'b':
-        r.drive(-500, 32768);
-        currentState = 'b';
-        break;
-      case 'r':
-        r.drive(50, -1);
-        currentState = 'r';
-        break;
-      case 'l':
-        r.drive(50, 1);
-        currentState = 'l';
-        break;
+      case 'd':   //Drive State
+
+
+        if(localSpeed <= 500 && localSpeed >= -500 && localRadious >= 0 && localRadious <= 32768){
+          if(localSpeed == 0){
+            
+            Serial.print("Stopping Roomba ");
+            r.drive(0, 0); 
+          }else{
+            Serial.print("speed: ");
+            Serial.println(localSpeed);
+            Serial.print(" radious: ");
+            Serial.println(localRadious);
+            r.drive(300, 1);
+            roombaState = 'd';
+          }
+        }else{
+          r.drive(0, 0);   // Stop the roomba if input value is wrong 
+        }
+//      case 'f': 
+//        r.drive(500, 2000);
+//        break;
+//      case 'b':
+//        r.drive(-500, 2000);
+//        roombaState = 'b';
+//        break;
+//      case 'r':
+//        r.drive(-50, 1);
+//        roombaState = 'r';
+//        break;
+//      case 'l':
+//        r.drive(50, 1);
+//        roombaState = 'l';
+//        break;
       case 's':
-//        Serial.println("Stopping Roomba");
         r.drive(0,0);
-        currentState = 's';
+        roombaState = 's';
         break;
-      case 'd':
+      case 'k':
         r.dock();
-        currentState = 'd';
+        roombaState = 'k';
         break;
       case 'p':
         r.power_off();
         initialized = false;
-        currentState = 'p';
+        roombaState = 'p';
         break;
       default:
-        currentState = 'i';
+        roombaState = 'i';
         break;
     }
   digitalWrite(TEST_PIN_2, LOW);
@@ -241,9 +263,9 @@ int getJoyStickPercentage(int x){
 
 void servoMovement(Servo inputServo, int angle, int* servoAngle, int minAngle, int maxAngle){    
    *servoAngle += angle;
-   Serial.print("Servo Angle : ");
-   Serial.println(*servoAngle);
-   
+//   Serial.print("Servo Angle : ");
+//   Serial.println(*servoAngle);
+//   
    if( *servoAngle >= maxAngle ){
       *servoAngle = maxAngle;
    }else if( *servoAngle <= minAngle){
@@ -260,16 +282,16 @@ void centerServoPosition(){
   panServo.write(90);
   tiltServo.write(90);
 }
+
 // Servo Tasks
 void ServoTasks(){
   // ------ Servo Motor data -------
-
-//  Serial.print("Pan Angle : " );
-//  Serial.println(servoPanSpeed);
-//
-//  Serial.print("Tilt Angle : " );
-//  Serial.println(servoTiltSpeed);
-
+  //  Serial.print("Pan Angle : " );
+  //  Serial.println(servoPanSpeed);
+  //
+  //  Serial.print("Tilt Angle : " );
+  //  Serial.println(servoTiltSpeed);
+  // ------ Servo Motor data -------
   servoMovement( panServo,servoPanSpeed, &panAngle   ,45, 135);  
   servoMovement( tiltServo, servoTiltSpeed, &tiltAngle ,60, 135 );  
 }
