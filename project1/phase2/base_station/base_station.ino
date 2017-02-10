@@ -42,9 +42,9 @@ void setup() {
 
   Scheduler_Init();
 
-  Scheduler_StartTask(100, 500, update_lcd);
-  Scheduler_StartTask(0, 25, roombaTasks);
-  Scheduler_StartTask(50, 25, servoTasks);
+  Scheduler_StartTask(0, 50, roombaTasks);
+  Scheduler_StartTask(75, 50, servoTasks);
+  Scheduler_StartTask(150, 500, update_lcd);
 }
 
 void update_lcd()
@@ -217,15 +217,19 @@ void roombaTasks()
 
 //  int drivePower = sqrt(mx * mx + my * my) * 10;
   int drivePower = my;
-//  if (my > 0 || mx > 0) drivePower *= -1;
-  
-  
+   
   int angle = 2000;
-  if (joystickX < 512) angle = map(joystickX, 0, 512, 1, 200) * 10;
-  else angle = map(joystickX, 512, 1023, 200, 1) * 10;
+  if (joystickX < 512) angle = map(joystickX, 0, 512, 200, 2000);
+  else angle = map(joystickX, 512, 1023, -2000, -200);
 
-  if (angle > 1800) angle = 2000;
-  else if (angle < 50) angle = 1;
+  if (angle > 1700) angle = 8000;
+  else if (angle < -1700) angle = -8000;
+  
+  if (my == 0)
+  {
+    drivePower = mx < 0 ? mx : -mx;
+    angle = angle < 0 ? 1 : -1;
+  }
 
   createServoCommand(btCommand, "r,d", drivePower, angle);
 //  if (mx != 0 && my != 0) createServoCommand(btCommand, "r,d", drivePower, angle);
