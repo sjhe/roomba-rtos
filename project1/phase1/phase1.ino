@@ -67,8 +67,7 @@ void laserState(int inputValue)
 
 int getJoyStickPercentage(int x){
   int mapped  = map(x, 0 , 1023, -maxStepAngle, maxStepAngle );
-//  Serial.print(mapped);
-  if(  -2 <= mapped && mapped <= 2 ){
+  if(-2 <= mapped && mapped <= 2){
     mapped = 0;
   }
 
@@ -85,8 +84,6 @@ void centerServoPosition(){
 }
 
 void servoMovement(Servo theServo, int angle, int* servoAngle, int minAngle, int maxAngle){
-//    int temp = *servoAngle; 
-    
    *servoAngle += angle;
    if( *servoAngle >= maxAngle ){
       *servoAngle = maxAngle;
@@ -109,15 +106,6 @@ void parseAndExecuteJoystickInput()
   int joystickX = analogRead(JOYSTICK_X_PIN);
   int joystickY = analogRead(JOYSTICK_Y_PIN);
   int joystickButton = digitalRead(JOYSTICK_PIN_BUTTON);
-  byte inArray[9]; //request code for real-time data
-
-//  // print out the value you read:
-//  Serial.print(joystickX);
-//  Serial.print(", ");
-//  Serial.print(joystickY);
-//  Serial.print(" | ");
-//  Serial.print(joystickButton);
-//  Serial.print(" | ");
 
   lcd.setCursor(0, 0);
   lcd.print(joystickX);
@@ -126,40 +114,28 @@ void parseAndExecuteJoystickInput()
   lcd.setCursor(7, 0);
   lcd.print(joystickY);
 
+// ------ Servo Motor data -------
+
+  int stepAngleX = getJoyStickPercentage(joystickX);     // the step angle that needs to be increased from joystick X
+  int stepAngleY = getJoyStickPercentage(joystickY);    // the step angle that needs to be increased from joystick Y
+
+  servoMovement(panServo, stepAngleX, &panAngle, 10, 170);  
+  servoMovement(tiltServo, stepAngleY, &tiltAngle, 60, 135 );  
+
+// ------ Laser state - on/off -------- //
   laserState(joystickButton);
   
 }
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  
   lcd.clear();
-  
-  int joystickX = analogRead(JOYSTICK_X_PIN);
-  int joystickY = analogRead(JOYSTICK_Y_PIN);
-  int joystickButton = digitalRead(JOYSTICK_PIN_BUTTON);
-
-  int theDelay = 50;
   
   parseAndExecuteJoystickInput();
   
-
   int photoresistor_val = analogRead(PHOTORESISTOR_PIN);
-//  Serial.print(photoresistor_val);
-//  Serial.println();
   lcd.setCursor(0,1); //Start at character 0 on line 0
   lcd.print(photoresistor_val);
-
-// ------ Servo Motor data -------
-
-  int stepAngleX = getJoyStickPercentage(joystickX);     // the step angle that needs to be increased from joystick X
-
-  int stepAngleY = getJoyStickPercentage(joystickY);    // the step angle that needs to be increased from joystick Y
-
-  servoMovement( panServo, stepAngleX, &panAngle,10, 170);  
- 
-  servoMovement( tiltServo, stepAngleY, &tiltAngle,60, 135 );  
 
   delay(25);        // delay in between reads for stability
 
