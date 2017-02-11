@@ -42,9 +42,9 @@ void setup() {
 
   Scheduler_Init();
 
-  Scheduler_StartTask(0, 50, roombaTasks);
-  Scheduler_StartTask(75, 50, servoTasks);
-  Scheduler_StartTask(150, 500, update_lcd);
+  Scheduler_StartTask(0, 150, roombaTasks);
+  Scheduler_StartTask(7, 100, servoTasks);
+  Scheduler_StartTask(13, 500, update_lcd);
 }
 
 void update_lcd()
