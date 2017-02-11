@@ -15,8 +15,10 @@ Roomba r(ROOMBA_SERIAL_PIN, ROOMBA_DIGITA_PIN);
 #define PAN_SERVO_PIN         9
 #define LASER_PIN            10
 
-#define TEST_PIN             45
-#define TEST_PIN_2           39
+#define TEST_PIN             40
+#define TEST_PIN_2           41
+#define TEST_PIN_3           43
+
 unsigned long next_time = 1;
 unsigned long runtime = 0;
 bool initialized = true;
@@ -48,15 +50,17 @@ void setup() {
   pinMode(LASER_PIN, OUTPUT);
   pinMode(TEST_PIN, OUTPUT);
   pinMode(TEST_PIN_2, OUTPUT);
+  pinMode(TEST_PIN_3, OUTPUT);
+
   panServo.attach(PAN_SERVO_PIN);     // Pan servo
   tiltServo.attach(TILT_SERVO_PIN);   // Tilt Servo
   centerServoPosition();
   
   delay(1000); 
   Scheduler_Init();
-  Scheduler_StartTask(0, 25, ReceiveInputTask);
-  Scheduler_StartTask(50, 100, RoobaTasks);
-  Scheduler_StartTask(175, 50, ServoTasks);
+  Scheduler_StartTask(0, 75, ReceiveInputTask);
+  Scheduler_StartTask(10, 75, RoobaTasks);
+  Scheduler_StartTask(20, 75, ServoTasks);
 }
 
 // INPUT EXAMPLE: "f,100,s*"
@@ -145,8 +149,9 @@ void laserState(char* inputValue)
 
 //ReceiveInputTask 
 void ReceiveInputTask() {
+  digitalWrite(TEST_PIN, HIGH);
+
   while(Serial1.available()) {
-     digitalWrite(TEST_PIN_2, HIGH);
     //Make sure the Roomba is ready to go.
     char command = Serial1.read();
     
@@ -159,25 +164,26 @@ void ReceiveInputTask() {
     { 
       //execute bt input
       Serial.println(btInput);
-      digitalWrite(TEST_PIN, HIGH);
+//      digitalWrite(TEST_PIN, HIGH);
       parseInputStringAndUpdate();
       laserState(joystickButton);
-      digitalWrite(TEST_PIN, LOW);
+//      digitalWrite(TEST_PIN, LOW);
       btInput[0] = '\0';
     }
   }
-  digitalWrite(TEST_PIN_2, LOW);
+  digitalWrite(TEST_PIN, LOW);
 }
 
 
 //Roomba Tasks
 void RoobaTasks() {
+  digitalWrite(TEST_PIN_2, HIGH);
+
   if(!initialized) {
     r.init();
     initialized = true;
   }
 
-  digitalWrite(TEST_PIN_2, HIGH);
   char command     = ' ';
   int localRadious = 0;
   int localSpeed   = 0;
@@ -269,8 +275,12 @@ void ServoTasks(){
   //  Serial.print("Tilt Angle : " );
   //  Serial.println(servoTiltSpeed);
   // ------ Servo Motor data -------
+  digitalWrite(TEST_PIN_3, HIGH);
+
   servoMovement( panServo,servoPanSpeed, &panAngle   ,45, 135);  
   servoMovement( tiltServo, servoTiltSpeed, &tiltAngle ,60, 135 );  
+  digitalWrite(TEST_PIN_3, LOW);
+
 }
 
 
