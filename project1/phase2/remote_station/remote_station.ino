@@ -59,8 +59,8 @@ void setup() {
   delay(1000); 
   Scheduler_Init();
   Scheduler_StartTask(0, 75, ReceiveInputTask);
-  Scheduler_StartTask(10, 75, RoobaTasks);
-  Scheduler_StartTask(20, 75, ServoTasks);
+  Scheduler_StartTask(7, 125, RoobaTasks);
+  Scheduler_StartTask(17, 50, ServoTasks);
 }
 
 // INPUT EXAMPLE: "f,100,s*"
