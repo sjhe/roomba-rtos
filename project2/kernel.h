@@ -13,16 +13,16 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#define F_CPU 16000000
+
 #include <util/delay.h>
 #include "os.h"
 
-
 /** Disable default prescaler to make processor speed 8 MHz. */
-#define CLOCK8MHZ()    CLKPR = (1<<CLKPCE); CLKPR = 0x00;
+// #define CLOCK8MHZ()    CLKPR = (1<<CLKPCE); CLKPR = 0x00;
 
-#define F_CPU 16000000
 
-#define Disable_Interrupt()     asm volatile ("cli"::)
+#define Disable_Interrupt()    asm volatile ("cli"::)
 #define Enable_Interrupt()     asm volatile ("sei"::)
 
 /** The maximum number of names. Currently the same as the number of tasks. */
@@ -40,30 +40,34 @@
 
 /* Typedefs and data structures. */
 
-typedef void (*voidfuncvoid_ptr) (void);      /* pointer to void f(void) */
+typedef void (*voidfuncptr) (void);      /* pointer to void f(void) */ 
+
 
 /**
- * @brief This is the set of states that a task can be in at any given time.
- */
-typedef enum
+  *  This is the set of states that a task can be in at any given time.
+  */
+typedef enum process_states
 {
     DEAD = 0,
     RUNNING,
     READY,
-    WAITING
+    WAITING  // Waiting state
 }
-task_state_t;
+PROCESS_STATES;
+
+
+
 
 /**
- * @brief This is the set of kernel requests, i.e., a request code for each system call.
- */
-typedef enum
+  * This is the set of kernel requests, i.e., a request code for each system call.
+  */
+typedef enum kernel_request_type
 {
     NONE = 0,
     TIMER_EXPIRED,
-    TASK_CREATE,
-    TASK_TERMINATE,
-    TASK_NEXT,
+    CREATE,
+    TERMINATE,
+    NEXT,
     TASK_GET_ARG,
     EVENT_INIT,
     EVENT_WAIT,
@@ -71,62 +75,64 @@ typedef enum
     EVENT_BROADCAST,
     EVENT_SIGNAL_AND_NEXT,
     EVENT_BROADCAST_AND_NEXT
-}
-kernel_request_t;
+} KERNEL_REQUEST_TYPE;
 
 
 /**
- * @brief The arguments required to create a task.
- */
-typedef struct
+  * Each task is represented by a process descriptor, which contains all
+  * relevant information about this task. For convenience, we also store
+  * the task's stack, i.e., its workspace, in here.
+  */
+typedef struct ProcessDescriptor 
 {
-    /** The code the new task is to run.*/
-    voidfuncvoid_ptr f;
-    /** A new task may be created with an argument that it can retrieve later. */
-    int arg;
-    /** Priority of the new task: RR, PERIODIC, SYSTEM */
-    uint8_t level;
-    /** If the new task is PERIODIC, this is its name in the PPP array. */
-    uint8_t name;
-}
-create_args_t;
-
-
-typedef struct td_struct task_descriptor_t;
-/**
- * @brief All the data needed to describe the task, including its context.
- */
-struct td_struct
-{
-    /** The stack used by the task. SP points in here when task is RUNNING. */
-    uint8_t                         stack[WORKSPACE];
-    /** A variable to save the hardware SP into when the task is suspended. */
-    uint8_t*               volatile sp;   /* stack pointer into the "workSpace" */
-    /** PERIODIC tasks need a name in the PPP array. */
-    uint8_t                         name;
-    /** The state of the task in this descriptor. */
-    task_state_t                    state;
-    /** The argument passed to Task_Create for this task. */
-    int                             arg;
-    /** The priority (type) of this task. */
-    uint8_t                         level;
-    /** A link to the next task descriptor in the queue holding this task. */
-    task_descriptor_t*              next;
-};
-
+   volatile unsigned char *sp;   /* stack pointer into the "workSpace" */
+   unsigned char workSpace[WORKSPACE]; 
+   PROCESS_STATES state;
+   voidfuncptr  code;   /* function to be executed as a task */
+   KERNEL_REQUEST_TYPE request;
+} PD;
 
 /**
- * @brief Contains pointers to head and tail of a linked list.
- */
-typedef struct
-{
-    /** The first item in the queue. NULL if the queue is empty. */
-    task_descriptor_t*  head;
-    /** The last item in the queue. Undefined if the queue is empty. */
-    task_descriptor_t*  tail;
-}
-queue_t;
+  * This table contains ALL process descriptors. It doesn't matter what
+  * state a task is in.
+  */
+static PD Process[MAXTHREAD];
+
+/**
+  * The process descriptor of the currently RUNNING task.
+  */
+volatile static PD* Cp; 
+
+/** 
+  * Since this is a "full-served" model, the kernel is executing using its own
+  * stack. We can allocate a new workspace for this kernel stack, or we can
+  * use the stack of the "main()" function, i.e., the initial C runtime stack.
+  * (Note: This and the following stack pointers are used primarily by the
+  *   context switching code, i.e., CSwitch(), which is written in assembly
+  *   language.)
+  */         
+volatile unsigned char *KernelSp;
+
+/**
+  * This is a "shadow" copy of the stack pointer of "Cp", the currently
+  * running task. During context switching, we need to save and restore
+  * it into the appropriate process descriptor.
+  */
+volatile unsigned char *CurrentSp;
+
+/** index to next task to run */
+volatile static unsigned int NextP;  
+
+/** 1 if kernel has been started; 0 otherwise. */
+volatile static unsigned int KernelActive;  
+
+/** number of tasks created so far */
+volatile static unsigned int Tasks;  
+
+
 
 
 #endif
+
+
 

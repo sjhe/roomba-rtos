@@ -1,26 +1,14 @@
 #include "os.h"
+#include "kernel.h"
 
-#include "kernal.h"
-
+#include "led_test.h"
 
 #include <string.h>
 #include <stdio.h>
 
-#define  F_CPU        16000000
-
-//Comment out the following line to remove debugging code from compiled version.
-#define DEBUG
-
-typedef void (*voidfuncptr) (void);      /* pointer to void f(void) */ 
-
-#define WORKSPACE     256
-
-
-
-
 
 /** @brief a_main function provided by user application. The first task to run. */
-extern int a_main();
+extern void a_main();
 
 /*
  * FUNCTIONS
@@ -104,98 +92,24 @@ extern void Enter_Kernel();
 #define Enable_Interrupt()		asm volatile ("sei"::)
   
 
-/**
-  *  This is the set of states that a task can be in at any given time.
-  */
-typedef enum process_states 
-{ 
-   DEAD = 0, 
-   READY, 
-   RUNNING 
-} PROCESS_STATES;
-
-/**
-  * This is the set of kernel requests, i.e., a request code for each system call.
-  */
-typedef enum kernel_request_type 
-{
-   NONE = 0,
-   CREATE,
-   NEXT,
-   TERMINATE
-} KERNEL_REQUEST_TYPE;
-
-/**
-  * Each task is represented by a process descriptor, which contains all
-  * relevant information about this task. For convenience, we also store
-  * the task's stack, i.e., its workspace, in here.
-  */
-typedef struct ProcessDescriptor 
-{
-   unsigned char *sp;   /* stack pointer into the "workSpace" */
-   unsigned char workSpace[WORKSPACE]; 
-   PROCESS_STATES state;
-   voidfuncptr  code;   /* function to be executed as a task */
-   KERNEL_REQUEST_TYPE request;
-} PD;
-
-/**
-  * This table contains ALL process descriptors. It doesn't matter what
-  * state a task is in.
-  */
-static PD Process[MAXTHREAD];
-
-/**
-  * The process descriptor of the currently RUNNING task.
-  */
-volatile static PD* Cp; 
-
-/** 
-  * Since this is a "full-served" model, the kernel is executing using its own
-  * stack. We can allocate a new workspace for this kernel stack, or we can
-  * use the stack of the "main()" function, i.e., the initial C runtime stack.
-  * (Note: This and the following stack pointers are used primarily by the
-  *   context switching code, i.e., CSwitch(), which is written in assembly
-  *   language.)
-  */         
-volatile unsigned char *KernelSp;
-
-/**
-  * This is a "shadow" copy of the stack pointer of "Cp", the currently
-  * running task. During context switching, we need to save and restore
-  * it into the appropriate process descriptor.
-  */
-volatile unsigned char *CurrentSp;
-
-/** index to next task to run */
-volatile static unsigned int NextP;  
-
-/** 1 if kernel has been started; 0 otherwise. */
-volatile static unsigned int KernelActive;  
-
-/** number of tasks created so far */
-volatile static unsigned int Tasks;  
-
-
-
-void setup() {
-  init_LED_ON_BOARD();
-  init_LED_PING();
-  init_LED_ISR();
+// void setup () {
+//   init_LED_ON_BOARD();
+//   init_LED_PING();
+//   init_LED_ISR();
   //Clear timer config.
-  TCCR3A = 0;      // Timer 3 A
-  TCCR3B = 0;      // Timer 3 B
-  //Set to CTC (mode 4)
-  TCCR3B |= (1<<WGM32);
-  //Set prescaller to 256
-  TCCR3B |= (1<<CS32);
-  //Set TOP value (1 milisecond)
-  OCR3A = 62500;
-  //Enable interupt A for timer 3.
-  TIMSK3 |= (1<<OCIE3A);
-  //Set timer to 0 (optional here).
-  TCNT3 = 0;
-}
+  // TCCR3A = 0;      // Timer 3 A
+  // TCCR3B = 0;      // Timer 3 B
+  // //Set to CTC (mode 4)
+  // TCCR3B |= (1<<WGM32);
+  // //Set prescaller to 256
+  // TCCR3B |= (1<<CS32);
+  // //Set TOP value (1 milisecond)
+  // OCR3A = 62500;
+  // //Enable interupt A for timer 3.
+  // TIMSK3 |= (1<<OCIE3A);
+  // //Set timer to 0 (optional here).
+  // TCNT3 = 0;
+// }
 /**
  * When creating a new task, it is important to initialize its stack just like
  * it has called "Enter_Kernel()"; so that when we switch to it later, we
@@ -204,22 +118,15 @@ void setup() {
  */
 void Kernel_Create_Task_At( PD *p, voidfuncptr f ) 
 {   
-   unsigned char *sp;
+  unsigned char *sp;
+  //Changed -2 to -1 to fix off by one error.
+  sp = (unsigned char *) &(p->workSpace[WORKSPACE-1]);
 
-#ifdef DEBUG
-   int counter = 0;
-#endif
+  /*----BEGIN of NEW CODE----*/
+  //Initialize the workspace (i.e., stack) and PD here!
 
-   //Changed -2 to -1 to fix off by one error.
-   sp = (unsigned char *) &(p->workSpace[WORKSPACE-1]);
-
-
-
-   /*----BEGIN of NEW CODE----*/
-   //Initialize the workspace (i.e., stack) and PD here!
-
-   //Clear the contents of the workspace
-   memset(&(p->workSpace),0,WORKSPACE);
+  //Clear the contents of the workspace
+  memset(&(p->workSpace),0,WORKSPACE);
 
    //Notice that we are placing the address (16-bit) of the functions
    //onto the stack in reverse byte order (least significant first, followed
@@ -259,13 +166,12 @@ static void Kernel_Create_Task( voidfuncptr f )
    if (Tasks == MAXTHREAD) return;  /* Too many task! */
 
    /* find a DEAD PD that we can use  */
-   for (x = 0; x < MAXTHREAD; x++) {
-       if (Process[x].state == DEAD) break;
-   }
-
-   ++Tasks;
-   Kernel_Create_Task_At( &(Process[x]), f );
-
+  for (x = 0; x < MAXTHREAD; x++) {
+    if (Process[x].state == DEAD) 
+      break;
+  }
+  ++Tasks;
+  Kernel_Create_Task_At( &(Process[x]), f );
 }
 
 
@@ -421,27 +327,7 @@ void Task_Terminate()
    }
 }
 
-/*============
-  * A Simple Test 
-  *============
-  */
 
-void Ping() 
-{
-  disable_LEDs();
-  for(;;){
-    enable_LED(LED_PING);
-  }
-}
-// Pong
-void Pong() 
-{
-  disable_LEDs();
-
-  for(;;){
-    enable_LED(LED_ON_BOARD);
-  }
-}
 /**
   * Interrupt service routine
   */
@@ -452,18 +338,16 @@ ISR(TIMER3_COMPA_vect)
   disable_LEDs();
 }
 
-
 /**
   * This function creates two cooperative tasks, "Ping" and "Pong". Both
   * will run forever.
   */
 void main() 
 {
-   OS_Init();
-   Task_Create( Pong );
-   Task_Create( Ping );
-   setup();  
-
-   OS_Start();
+  OS_Init();
+  // setup();  
+   // Task_Create( Pong );
+   Task_Create( a_main );
+  OS_Start();
 }
 
