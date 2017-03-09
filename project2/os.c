@@ -1,11 +1,40 @@
+#include "os.h"
+
+#include "kernal.h"
+
+
 #include <string.h>
 #include <stdio.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
 
 #define  F_CPU        16000000
-#include <util/delay.h>
-#include "LED_Test.h"
+
+//Comment out the following line to remove debugging code from compiled version.
+#define DEBUG
+
+typedef void (*voidfuncptr) (void);      /* pointer to void f(void) */ 
+
+#define WORKSPACE     256
+
+
+
+
+
+/** @brief a_main function provided by user application. The first task to run. */
+extern int a_main();
+
+/*
+ * FUNCTIONS
+ */
+/**
+ *  @brief The idle task does nothing but busy loop.
+ */
+static void idle (void)
+{
+    for(;;)
+    {};
+}
+
+
 /**
  * \file active.c
  * \brief A Skeleton Implementation of an RTOS
@@ -31,14 +60,6 @@
  * LED D2 and D5 whenever the correspoing PING and PONG tasks are running.
  * (See the file "cswitch.S" for details.)
  */
-
-//Comment out the following line to remove debugging code from compiled version.
-#define DEBUG
-
-typedef void (*voidfuncptr) (void);      /* pointer to void f(void) */ 
-
-#define WORKSPACE     256
-#define MAXPROCESS   4
 
 
 /*===========
@@ -122,7 +143,7 @@ typedef struct ProcessDescriptor
   * This table contains ALL process descriptors. It doesn't matter what
   * state a task is in.
   */
-static PD Process[MAXPROCESS];
+static PD Process[MAXTHREAD];
 
 /**
   * The process descriptor of the currently RUNNING task.
@@ -169,7 +190,7 @@ void setup() {
   //Set prescaller to 256
   TCCR3B |= (1<<CS32);
   //Set TOP value (1 milisecond)
-  OCR3A = 625;
+  OCR3A = 62500;
   //Enable interupt A for timer 3.
   TIMSK3 |= (1<<OCIE3A);
   //Set timer to 0 (optional here).
@@ -235,10 +256,10 @@ static void Kernel_Create_Task( voidfuncptr f )
 {
    int x;
 
-   if (Tasks == MAXPROCESS) return;  /* Too many task! */
+   if (Tasks == MAXTHREAD) return;  /* Too many task! */
 
    /* find a DEAD PD that we can use  */
-   for (x = 0; x < MAXPROCESS; x++) {
+   for (x = 0; x < MAXTHREAD; x++) {
        if (Process[x].state == DEAD) break;
    }
 
@@ -258,14 +279,14 @@ static void Dispatch()
        * Note: if there is no READY task, then this will loop forever!.
        */
    while(Process[NextP].state != READY) {
-      NextP = (NextP + 1) % MAXPROCESS;
+      NextP = (NextP + 1) % MAXTHREAD;
    }
 
    Cp = &(Process[NextP]);
    CurrentSp = Cp->sp;
    Cp->state = RUNNING;
 
-   NextP = (NextP + 1) % MAXPROCESS;
+   NextP = (NextP + 1) % MAXTHREAD;
 }
 
 /**
@@ -332,7 +353,7 @@ void OS_Init()
    KernelActive = 0;
    NextP = 0;
 	//Reminder: Clear the memory for the task on creation.
-   for (x = 0; x < MAXPROCESS; x++) {
+   for (x = 0; x < MAXTHREAD; x++) {
       memset(&(Process[x]),0,sizeof(PD));
       Process[x].state = DEAD;
    }

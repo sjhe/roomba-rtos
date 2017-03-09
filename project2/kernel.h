@@ -12,27 +12,29 @@
 #define __KERNEL_H__
 
 #include <avr/io.h>
-#include "os.h"
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
 
 /** Disable default prescaler to make processor speed 8 MHz. */
 #define CLOCK8MHZ()    CLKPR = (1<<CLKPCE); CLKPR = 0x00;
 
-#define F_CPU 8000000UL
+#define F_CPU 16000000
 
 #define Disable_Interrupt()     asm volatile ("cli"::)
 #define Enable_Interrupt()     asm volatile ("sei"::)
 
 /** The maximum number of names. Currently the same as the number of tasks. */
-#define 	MAXNAME		MAXPROCESS
+#define MAXNAME		MAXTHREAD
 
 /** The number of clock cycles in one "tick" or 5 ms */
 #define TICK_CYCLES     (F_CPU / 1000 * TICK)
 
 /** LEDs for OS_Abort() */
-#define LED_RED_MASK    (uint8_t)(_BV(4) | _BV(7))
+// #define LED_RED_MASK    
 
 /** LEDs for OS_Abort() */
-#define LED_GREEN_MASK    (uint8_t)(_BV(5) | _BV(6))
+// #define LED_GREEN_MASK   
 
 
 /* Typedefs and data structures. */
