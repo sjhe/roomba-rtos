@@ -2,3 +2,6 @@
 scheduler.cpp
 scheduler.h
 project2/makefile
+*.map
+*.o
+*.hex

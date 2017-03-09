@@ -14,6 +14,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include "os.h"
 
 
 /** Disable default prescaler to make processor speed 8 MHz. */
