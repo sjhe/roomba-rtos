@@ -1,2 +1,4 @@
+/.gitignore
 scheduler.cpp
 scheduler.h
+project2/makefile
