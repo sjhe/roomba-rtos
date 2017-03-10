@@ -1,5 +1,5 @@
 #include <avr/io.h>
-#include "LED_Test.h"
+#include "led_test.h"
 /**
  * \file LED_Test.c
  * \brief Small set of test functions for controlling LEDs on a AT90USBKey

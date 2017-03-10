@@ -10,6 +10,9 @@
 /** @brief a_main function provided by user application. The first task to run. */
 extern void a_main();
 
+static queue_t system_queue;
+static queue_t rr_queue;
+
 /*
  * FUNCTIONS
  */
