@@ -64,7 +64,6 @@ PID   Task_Create_Period(void (*f)(void), int arg, TICK period, TICK wcet, TICK 
 //   
 void Task_Next(void);
 
-
 // The calling task gets its initial "argument" when it was created.
 int  Task_GetArg(void);
 

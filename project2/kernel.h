@@ -52,6 +52,13 @@ typedef enum process_states
 	WAITING  // Waiting state
 } PROCESS_STATES;
 
+typedef enum system_levels
+{
+	RR = 1,
+	PERIODIC,
+	SYSTEM
+} SYSTEM_LEVELS;
+
 /**
  * This is the set of kernel requests, i.e., a request code for each system call.
  */
@@ -71,20 +78,38 @@ typedef enum kernel_request_type
 	EVENT_BROADCAST_AND_NEXT
 } KERNEL_REQUEST_TYPE;
 
+
+
+typedef struct process_struct PD;
+/**
+ * @brief All the data needed to describe the task, including its context.
+ */
+struct process_struct
+{
+	/** The stack used by the task. SP points in here when task is RUNNING. */
+	uint8_t                         workSpace[WORKSPACE];
+	/** A variable to save the hardware SP into when the task is suspended. */
+	volatile uint8_t*						    sp;   /* stack pointer into the "workSpace" */
+	/** PERIODIC tasks need a name in the PPP array. */
+	uint8_t                         name;
+	/** The state of the task in this descriptor. */
+	PROCESS_STATES                  state;
+	/** The argument passed to Task_Create for this task. */
+	int                             arg;
+	/** The priority (type) of this task. */
+	uint8_t                         level;
+	/** A link to the next task descriptor in the queue holding this task. */
+	voidfuncptr  										code;   /* function to be executed as a task */
+
+	KERNEL_REQUEST_TYPE 						request;
+
+	PD*                             next;
+};
 /**
  * Each task is represented by a process descriptor, which contains all
  * relevant information about this task. For convenience, we also store
  * the task's stack, i.e., its workspace, in here.
  */
-typedef struct ProcessDescriptor 
-{
-	volatile unsigned char *sp;   /* stack pointer into the "workSpace" */
-	unsigned char workSpace[WORKSPACE]; 
-	PROCESS_STATES state;
-	voidfuncptr  code;   /* function to be executed as a task */
-	KERNEL_REQUEST_TYPE request;
-} PD;
-
 /**
  * This table contains ALL process descriptors. It doesn't matter what
  * state a task is in.
@@ -122,39 +147,15 @@ volatile static unsigned int KernelActive;
 /** number of tasks created so far */
 volatile static unsigned int Tasks;  
 
-
-typedef struct td_struct task_descriptor_t;
-/**
- * @brief All the data needed to describe the task, including its context.
- */
-struct td_struct
-{
-	/** The stack used by the task. SP points in here when task is RUNNING. */
-	uint8_t                         stack[WORKSPACE];
-	/** A variable to save the hardware SP into when the task is suspended. */
-	uint8_t*						volatile sp;   /* stack pointer into the "workSpace" */
-	/** PERIODIC tasks need a name in the PPP array. */
-	uint8_t                         name;
-	/** The state of the task in this descriptor. */
-	PROCESS_STATES                  state;
-	/** The argument passed to Task_Create for this task. */
-	int                             arg;
-	/** The priority (type) of this task. */
-	uint8_t                         level;
-	/** A link to the next task descriptor in the queue holding this task. */
-	task_descriptor_t*              next;
-};
-
-
 /**
  * @brief Contains pointers to head and tail of a linked list.
  */
 typedef struct
 {
 	/** The first item in the queue. NULL if the queue is empty. */
-	task_descriptor_t*  head;
+	PD*  head;
 	/** The last item in the queue. Undefined if the queue is empty. */
-	task_descriptor_t*  tail;
+	PD*  tail;
 } queue_t;
 
 #endif

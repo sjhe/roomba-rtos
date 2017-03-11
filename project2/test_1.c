@@ -24,9 +24,9 @@ void Ping()
 {
   for(;;){
     disable_LEDs();
-    _delay_ms(1000);
+    _delay_ms(100);
     enable_LED(LED_PING);
-    _delay_ms(1000);
+    _delay_ms(100);
     Task_Next();
   }
 }
@@ -37,9 +37,9 @@ void Pong()
 
   for(;;){
     disable_LEDs();
-    _delay_ms(1000);
+    _delay_ms(100);
     enable_LED(LED_ON_BOARD);
-    _delay_ms(1000);
+    _delay_ms(100);
     Task_Next();
   }
 }
@@ -47,17 +47,10 @@ void Pong()
 void a_main(void)
 { 
   setup();
-  Task_Create( Pong );
-  // Task_Create( Ping );
-  // Pong();
-  // Ping();
-  // Pong();
-  // for(;;){
-  //   disable_LEDs();
-  //   _delay_ms(1000);
-  //   enable_LED(LED_ON_BOARD);
-  //   _delay_ms(1000);
-  //   // Task_Next();
-  // }
-  /* setup the test */
+  // Task_Create( Pong );
+  Task_Create_System( Pong, 1 );
+  Task_Create_System( Ping, 2 );
+
+  Task_Terminate();
+
 }
