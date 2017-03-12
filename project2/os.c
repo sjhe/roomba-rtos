@@ -9,6 +9,11 @@
 #include <string.h>
 #include <stdio.h>
 
+void Idle(void) 
+{ 
+	for (;;); 
+}
+
 /** @brief a_main function provided by user application. The first task to run. */
 extern void a_main();
 
@@ -44,7 +49,6 @@ static queue_t periodic_queue;
  /**
   *  @brief The Idle task does nothing but busy loop.
   */
-static void Idle(void) { for (;;); }
 
 /**
  * When creating a new task, it is important to initialize its stack just like
@@ -100,6 +104,9 @@ void Kernel_Create_Task_At(PD* p)
 		break;
 	case PERIODIC:
 		break;
+	case IDLE:
+		idle_process = p;
+		break;
 	default:
 		idle_process = p;
 		break;
@@ -132,7 +139,7 @@ static void Kernel_Create_Task()
 static void Kernel_Dispatch()
 {
 	// find the next READY task 
-	if (Cp->state != RUNNING)
+	if (Cp->state != RUNNING || Cp == idle_process)
 	{
 		if (system_queue.head != NULL)
 		{
@@ -152,8 +159,8 @@ static void Kernel_Dispatch()
 			CurrentSp = Cp->sp;
 			Cp->state = RUNNING;
 		}
-
 	}
+
 }
 
 /**
@@ -252,8 +259,9 @@ void OS_Init()
 
 	Cp->state = READY;
 	// create idle process
-	Task_Create(Idle, 0, 100);
+	//Task_Create_System(Idle, 2);
 	Task_Create_System(a_main, 1);
+	Task_Create(Idle, 1, IDLE);
 }
 
 

@@ -56,7 +56,8 @@ typedef enum system_levels
 {
 	RR = 1,
 	PERIODIC,
-	SYSTEM
+	SYSTEM,
+	IDLE
 } SYSTEM_LEVELS;
 
 /**
