@@ -28,8 +28,10 @@ void Task_Terminate();
 void Task_Create(voidfuncptr f, int arg, unsigned int level);
 
 /* Queue management */
-static void Enqueue(queue_t* queue_ptr, PD* p);
-static PD*  Dequeue(queue_t* queue_ptr);
+//static void Enqueue(queue_t* queue_ptr, PD* p);
+//static PD*  Dequeue(queue_t* queue_ptr);
+
+PD* idle_process;
 
 static queue_t system_queue;
 static queue_t rr_queue;
@@ -99,8 +101,10 @@ void Kernel_Create_Task_At(PD* p)
 		break;
 	case PERIODIC:
 		break;
+	case NULL:
+		idle_process = p;
+		break;
 	default:
-		// ERROR...
 		break;
 	}
 }
@@ -235,7 +239,10 @@ void OS_Init()
 		memset(&(Process[x]), 0, sizeof(PD));
 		Process[x].state = DEAD;
 	}
-	// Task_Create_System(Idle,0);
+
+	// create idle process
+	Task_Create_System(Idle, NULL);
+
 	Task_Create_System(a_main, 1);
 }
 
@@ -323,54 +330,6 @@ void Task_Terminate()
 
 		/* never returns here! */
 	}
-}
-
-/*
- * Queue manipulation.
- */
-
- /**
-  * @brief Add a task the head of the queue
-  *
-  * @param queue_ptr the queue to insert in
-  * @param task_to_add the task descriptor to add
-  */
-static void Enqueue(queue_t* queue_ptr, PD* p)
-{
-	p->next = NULL;
-
-	if (queue_ptr->head == NULL)
-	{
-		/* empty queue */
-		queue_ptr->head = p;
-		queue_ptr->tail = p;
-	}
-	else
-	{
-		/* put task at the back of the queue */
-		queue_ptr->tail->next = p;
-		queue_ptr->tail = p;
-	}
-}
-
-
-/**
- * @brief Pops head of queue and returns it.
- *
- * @param queue_ptr the queue to pop
- * @return the popped task descriptor
- */
-static PD* Dequeue(queue_t* queue_ptr)
-{
-	PD* p = queue_ptr->head;
-
-	if (queue_ptr->head != NULL)
-	{
-		queue_ptr->head = queue_ptr->head->next;
-		p->next = NULL;
-	}
-
-	return p;
 }
 
 /**

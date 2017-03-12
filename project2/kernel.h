@@ -87,23 +87,23 @@ typedef struct process_struct PD;
 struct process_struct
 {
 	/** The stack used by the task. SP points in here when task is RUNNING. */
-	uint8_t                         workSpace[WORKSPACE];
+	uint8_t                 workSpace[WORKSPACE];
 	/** A variable to save the hardware SP into when the task is suspended. */
-	volatile uint8_t*						    sp;   /* stack pointer into the "workSpace" */
+	volatile uint8_t*		sp;   /* stack pointer into the "workSpace" */
 	/** PERIODIC tasks need a name in the PPP array. */
-	uint8_t                         name;
+	uint8_t                 name;
 	/** The state of the task in this descriptor. */
-	PROCESS_STATES                  state;
+	PROCESS_STATES          state;
 	/** The argument passed to Task_Create for this task. */
-	int                             arg;
+	int                     arg;
 	/** The priority (type) of this task. */
-	uint8_t                         level;
+	uint8_t                 level;
 	/** A link to the next task descriptor in the queue holding this task. */
-	voidfuncptr  										code;   /* function to be executed as a task */
-
-	KERNEL_REQUEST_TYPE 						request;
-
-	PD*                             next;
+	voidfuncptr  			code;   /* function to be executed as a task */
+	// The tick number for when the next
+	uint32_t				next_start;
+	KERNEL_REQUEST_TYPE		request;
+	PD*						next;
 };
 /**
  * Each task is represented by a process descriptor, which contains all
@@ -157,5 +157,98 @@ typedef struct
 	/** The last item in the queue. Undefined if the queue is empty. */
 	PD*  tail;
 } queue_t;
+
+
+/*
+* Queue manipulation.
+*/
+
+/**
+* @brief Add a task the head of the queue
+*
+* @param queue_ptr the queue to insert in
+* @param task_to_add the task descriptor to add
+*/
+static void Enqueue(queue_t* queue_ptr, PD* p)
+{
+	p->next = NULL;
+
+	if (queue_ptr->head == NULL)
+	{
+		/* empty queue */
+		queue_ptr->head = p;
+		queue_ptr->tail = p;
+	}
+	else
+	{
+		/* put task at the back of the queue */
+		queue_ptr->tail->next = p;
+		queue_ptr->tail = p;
+	}
+}
+
+/**
+* @brief Add a task based on its next start time
+*
+* @param queue_ptr the queue to insert in
+* @param task_to_add the task descriptor to add
+*/
+static void EnqueuePeriodic(queue_t* queue_ptr, PD* p)
+{
+	if (queue_ptr->head == NULL)
+	{
+		queue_ptr->head = queue_ptr->tail = p;
+	}
+	else
+	{
+		PD* cp_curr = queue_ptr->head;
+		PD* cp_prev = NULL;
+
+		while (cp_curr != null && p->next_start < p->next_start)
+		{
+			cp_prev = cp_curr;
+			cp_curr = cp_curr->next;
+		}
+
+		// insert at head of queue
+		if (cp_prev == NULL)
+		{
+			queue_ptr->head = p;
+			p->next = cp_curr;
+		}
+		else if (cp_curr == NULL)
+		{
+			queue_ptr->tail = p;
+			cp_prev->next = p;
+			p->next = NULL;
+		}
+		else
+		{
+			cp_prev->next = p;
+			p->next = cp_curr;
+		}
+	}
+}
+
+
+/**
+* @brief Pops head of queue and returns it.
+*
+* @param queue_ptr the queue to pop
+* @return the popped task descriptor
+*/
+static PD* Dequeue(queue_t* queue_ptr)
+{
+	PD* p = queue_ptr->head;
+
+	if (queue_ptr->head != NULL)
+	{
+		queue_ptr->head = queue_ptr->head->next;
+		p->next = NULL;
+	}
+
+	return p;
+}
+
 
 #endif
