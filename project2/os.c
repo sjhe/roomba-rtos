@@ -86,7 +86,7 @@ void Kernel_Create_Task_At(PD* p)
 	p->state = READY;
 
 	// set the state of the task to ready
-	Cp->state = READY;
+	//if (!KernelActive) Cp->state = READY;
 
 	/* ---- Need to add switch statement for handling ----
 	 * ---- PERIODIC | SYSTEM | RR                    ----
@@ -239,8 +239,8 @@ void OS_Init()
 	}
 
 	// create idle process
-	Task_Create_System(Idle, NULL);
-
+	//Task_Create_System(Idle, NULL);
+	Cp->state = READY;
 	Task_Create_System(a_main, 1);
 }
 
