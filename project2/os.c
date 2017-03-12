@@ -32,6 +32,7 @@ void Task_Create(voidfuncptr f, int arg, unsigned int level);
 //static PD*  Dequeue(queue_t* queue_ptr);
 
 PD* idle_process;
+PD* new_task_args;
 
 static queue_t system_queue;
 static queue_t rr_queue;
@@ -73,25 +74,23 @@ void Kernel_Create_Task_At(PD* p)
 	*(unsigned char *)sp-- = (((unsigned int)Task_Terminate) >> 8) & 0xff;
 
 	//Place return address of function at bottom of stack
-	*(unsigned char *)sp-- = ((unsigned int)Cp->code) & 0xff;
-	*(unsigned char *)sp-- = (((unsigned int)Cp->code) >> 8) & 0xff;
+	*(unsigned char *)sp-- = ((unsigned int)new_task_args->code) & 0xff;
+	*(unsigned char *)sp-- = (((unsigned int)new_task_args->code) >> 8) & 0xff;
 
 	*(unsigned char *)sp-- = (uint8_t)0;
 	//Place stack pointer at top of stack
 	sp = sp - 34;
 
 	p->sp = sp;    /* stack pointer into the "workSpace" */
-	p->code = Cp->code;		/* function to be executed as a task */
+	p->code = new_task_args->code;		/* function to be executed as a task */
 	p->request = NONE;
 	p->state = READY;
-
-	// set the state of the task to ready
-	//if (!KernelActive) Cp->state = READY;
+	p->level = new_task_args->level;
 
 	/* ---- Need to add switch statement for handling ----
 	 * ---- PERIODIC | SYSTEM | RR                    ----
 	 */
-	switch (Cp->level) 
+	switch (new_task_args->level) 
 	{
 	case SYSTEM:
 		Enqueue(&system_queue, p);
@@ -141,6 +140,19 @@ static void Kernel_Dispatch()
 			CurrentSp = Cp->sp;
 			Cp->state = RUNNING;
 		}
+		else if (rr_queue.head != NULL)
+		{
+			Cp = Dequeue(&rr_queue);
+			CurrentSp = Cp->sp;
+			Cp->state = RUNNING;
+		}
+		else 
+		{
+			Cp = idle_process;
+			CurrentSp = Cp->sp;
+			Cp->state = RUNNING;
+		}
+
 	}
 }
 
@@ -238,9 +250,9 @@ void OS_Init()
 		Process[x].state = DEAD;
 	}
 
-	// create idle process
-	//Task_Create_System(Idle, NULL);
 	Cp->state = READY;
+	// create idle process
+	Task_Create(Idle, 0, 100);
 	Task_Create_System(a_main, 1);
 }
 
@@ -285,19 +297,20 @@ void Task_Create(voidfuncptr f, int arg, unsigned int level)
 	if (KernelActive) 
 	{
 		Disable_Interrupt();
-		Cp->code = f;
-		Cp->arg = arg;
-		Cp->level = (uint8_t)level;
+		new_task_args->code = f;
+		new_task_args->arg = arg;
+		new_task_args->level = (uint8_t)level;
 
 		Cp->request = CREATE;
 		Enter_Kernel();
 	}
 	else 
 	{
-		Cp->code = f;
-		Cp->arg = arg;
-		Cp->level = (uint8_t)level;
+		new_task_args->code = f;
+		new_task_args->arg = arg;
+		new_task_args->level = (uint8_t)level;
 
+		Cp->request = NONE;
 		Kernel_Create_Task();
 	}
 }

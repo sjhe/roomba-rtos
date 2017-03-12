@@ -48,8 +48,8 @@ void a_main(void)
 { 
   setup();
   // Task_Create( Pong );
-  Task_Create_System( Ping, 2 );
-  Task_Create_System( Pong, 1 );
+//  Task_Create_RR( Ping, 2 );
+//  Task_Create_RR( Pong, 1 );
 
   Task_Terminate();
 
