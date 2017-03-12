@@ -86,7 +86,7 @@ void Kernel_Create_Task_At( PD *p )
   p->request = NONE;
   /*----END of NEW CODE----*/
   p->state = READY;
-
+  Cp->state = READY;
 
   /* ---- Need to add switch statement for handling ---- 
    * ---- PERIODIC | SYSTEM | RR                    ----
