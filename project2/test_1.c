@@ -23,10 +23,10 @@ void setup () {
 void Ping() 
 {
   for(;;){
-    disable_LEDs();
-    _delay_ms(500);
-    enable_LED(LED_PING);
-    _delay_ms(500);
+    // disable_LEDs();
+    // _delay_ms(5);
+    led_toggle(LED_PING);
+    // _delay_ms(50);
     Task_Next();
   }
 }
@@ -34,12 +34,12 @@ void Ping()
 void Pong() 
 {
   // disable_LEDs();
-
   for(;;){
-    disable_LEDs();
-    _delay_ms(500);
-    enable_LED(LED_ON_BOARD);
-    _delay_ms(500);
+    // disable_LEDs();
+    led_toggle(LED_ON_BOARD);
+    // _delay_ms(500);
+    // enable_LED(LED_ON_BOARD);
+    // _delay_ms(500);
     Task_Next();
   }
 }
@@ -47,9 +47,13 @@ void Pong()
 void a_main(void)
 {
 	setup();
-  // Task_Create( Pong );
-  Task_Create_Period( Ping, 2 , 200, 1, 0);
+  Task_Create_Period( Ping, 2 , 5, 1, 0);
+
+  Task_Create_Period( Pong, 2 , 5, 1, 1);
+
+
   // Task_Create_System( Pong, 1 );
+  // Task_Create_System( Ping, 2 );
 
   Task_Terminate();
 

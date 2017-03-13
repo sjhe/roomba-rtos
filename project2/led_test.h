@@ -20,3 +20,4 @@ void init_LED_ISR();
 void toggle_LED_ON_BOARD();
 void enable_LED(unsigned int mask);
 void disable_LEDs(void);
+void led_toggle(unsigned int mask);

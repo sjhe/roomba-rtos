@@ -2,6 +2,9 @@
 #include "kernel.h"
 
 #include "led_test.h"
+#include "BlockingUART.h"
+
+#define OCR_MAX_VAL   6250
 
 #define Disable_Interrupt()   asm volatile ("cli"::)
 #define Enable_Interrupt()    asm volatile ("sei"::)
@@ -9,7 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 
-void Idle(void) 
+static void Idle(void) 
 { 
 	for (;;); 
 }
@@ -44,7 +47,7 @@ static queue_t rr_queue;
 static queue_t periodic_queue;
 
 // The number of elapsed Ticks since OS_Init()
-// uint32_t num_ticks = 0;
+uint32_t num_ticks = 0;
 
 /*
  * FUNCTIONS
@@ -106,6 +109,8 @@ void Kernel_Create_Task_At(PD* p)
 		Enqueue(&rr_queue, p);
 		break;
 	case PERIODIC:
+
+		// UART_print("period");
 		p->period 				 =  new_task_args->period;
 		p->wcet						 =  new_task_args->wcet;
 		p->next_start			 =  new_task_args->next_start;
@@ -156,10 +161,10 @@ static void Kernel_Dispatch()
 		}
 		else if(periodic_queue.head != NULL)
 		{	
-			if( num_ticks >= periodic_procs.head->next_start){
+			if( num_ticks >= periodic_queue.head->next_start){
 				//OS_Abort()
-			}else{
 				Cp = periodic_queue.head;		
+			}else{
 			}
 		}
 		else if (rr_queue.head != NULL)
@@ -190,6 +195,9 @@ static void Kernel_Main_Loop()
 
 	while (1) 
 	{
+		// if(num_ticks % 10 == 0 ){
+		// 	UART_print("num_ticks = %d", num_ticks);
+		// }
 		Cp->request = NONE; /* clear its request */
 
 		 /* activate this newly selected task */
@@ -221,6 +229,7 @@ static void Kernel_Handle_Request(void)
 	case TIMER_TICK:
 		switch (Cp->level) {
 			case SYSTEM: // drop down
+				// UART_print("System");
 			case IDLE:
 				break;
 			case PERIODIC: // drop down
@@ -252,9 +261,9 @@ static void Kernel_Handle_Request(void)
 			Enqueue(&system_queue, Cp);
 		}else if(Cp->level == PERIODIC)
 		{
-			Dequeue(&periodic_queue);
+			Cp = Dequeue(&periodic_queue);
 			Cp->state = READY;
-			Cp->next_start += Cp->period;
+			Cp->next_start = Cp->next_start + Cp->period;
 			Cp->ticks_remaining  = Cp->wcet ;
 
 			EnqueuePeriodic(&periodic_queue, Cp);
@@ -289,8 +298,13 @@ static void Kernel_Handle_Request(void)
 	*/
 void OS_Init()
 {
-	int x;
 
+// #ifdef DEBUG
+	// UART_Init0(57600);
+	// UART_print("\nboot\n");
+// #endif
+
+	int x;
 	Tasks = 0;
 	KernelActive = 0;
 	NextP = 0;
@@ -301,12 +315,12 @@ void OS_Init()
 		memset(&(Process[x]), 0, sizeof(PD));
 		Process[x].state = DEAD;
 	}
-
 	Cp->state = READY;
 	// create idle process
 	//Task_Create_System(Idle, 2);
+	// Task_Create_Idle(Idle, 1);
 	Task_Create_System(a_main, 1);
-	Task_Create(Idle, 1, IDLE);
+	init_tick_timer();
 }
 
 
@@ -328,6 +342,10 @@ void OS_Start()
 /*
  * Task management.
  */
+PID Task_Create_Idle(void(*f)(void), int arg) {
+	Task_Create(f, arg, IDLE);
+};
+
 PID Task_Create_System(void(*f)(void), int arg) {
 	Task_Create(f, arg, SYSTEM);
 };
@@ -339,8 +357,9 @@ PID Task_Create_RR(void(*f)(void), int arg) {
 PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK offset) {
 	new_task_args->period = period;
 	new_task_args->wcet = wcet;
-	new_task_args->next_start = offset;
 	new_task_args->ticks_remaining = wcet;
+	new_task_args->next_start = offset;
+
 
 	Task_Create(f, arg, PERIODIC);
 };
@@ -410,7 +429,7 @@ void init_tick_timer() {
   //Set prescaller to 256
   TCCR3B |= (1<<CS32);
   //Set TOP value (1 milisecond)
-  OCR3A = 62.5; // or (TICK * (F_CPU / 1024 ) / 1000)
+  OCR3A = OCR_MAX_VAL; // or (TICK * (F_CPU / 1024 ) / 1000)
   //Enable interupt A for timer 3.
   TIMSK3 |= (1<<OCIE3A);
   //Set timer to 0 (optional here).
@@ -421,36 +440,29 @@ void init_tick_timer() {
 /**
   * Interrupt service routine
   */
-  // ISR(TIMER3_COMPA_vect)
-  // {
-  //   enable_LED(LED_ISR);
-  //   Task_Next();
-  //   disable_LEDs();
-  // }
-
 ISR(TIMER3_COMPA_vect) {
-	SAVE_CTX_TOP();
-	STACK_SREG_SET_I_BIT();
-	SAVE_CTX_BOTTOM();
-
-	Cp->sp = (uint8_t *) ((((uint16_t) *(&CurrentSp + 1) << 8) | (uint16_t) CurrentSp ));
+	Disable_Interrupt();
+	// unsigned char *CurrentSp
+	// &CurrentSP   < -- > unsigned char CurrentSp  
+	// unsigned char CurrentSp
+	// &CurrentSP  <-->
+	// Cp->sp = (uint8_t *) ((((uint16_t) *(&CurrentSp + 1) << 8) | (uint16_t) CurrentSp ));
 	// Set the OCR for triggering the interrupt for the next tick (AFTER we've saved the context)
 	num_ticks++;
-	OCR3A += OCR_MAX_VAL;
-
-	kernel_request = K_REQ_TIMER_TICK;
+	// Task_Next();
+	Cp->request = TIMER_TICK;
+	Enter_Kernel();
 	// Restore the kernel's context, SP first.
 	// XXX: set the SP bytes manually, since setting the SP directly doesn't work!
-	SP = (uint8_t) (kernel_sp);
-	*(&SP + 1) = (uint8_t) ((volatile uint16_t) kernel_sp >> 8);
+
+	// *(&SP + 1) = (uint8_t) ((volatile uint16_t) KernelSP >> 8);
 
 	// Now restore I/O and SREG registers.
-	RESTORE_CTX();
+	// RESTORECTX();
 	/*
 	 * Assembly return instruction required since the C-level return expands to assembly code that
 	 * restores context, but we do that manually. Returns to kernel context.
 	 */
-	asm volatile ("ret\n"::);
 }
 
   /**
@@ -460,6 +472,7 @@ ISR(TIMER3_COMPA_vect) {
 void main()
 {
 	OS_Init();
+
 	OS_Start();
 }
 
