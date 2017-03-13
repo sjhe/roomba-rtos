@@ -37,6 +37,8 @@
 // #define LED_GREEN_MASK   
 
 
+
+
 /* Typedefs and data structures. */
 
 typedef void (*voidfuncptr) (void);      /* pointer to void f(void) */ 
@@ -70,13 +72,7 @@ typedef enum kernel_request_type
 	CREATE,
 	TERMINATE,
 	NEXT,
-	TASK_GET_ARG,
-	EVENT_INIT,
-	EVENT_WAIT,
-	EVENT_SIGNAL,
-	EVENT_BROADCAST,
-	EVENT_SIGNAL_AND_NEXT,
-	EVENT_BROADCAST_AND_NEXT
+	TIMER_TICK
 } KERNEL_REQUEST_TYPE;
 
 
@@ -100,11 +96,19 @@ struct process_struct
 	/** The priority (type) of this task. */
 	uint8_t                 level;
 	/** A link to the next task descriptor in the queue holding this task. */
-	voidfuncptr  			code;   /* function to be executed as a task */
+	voidfuncptr  						code;   /* function to be executed as a task */
 	// The tick number for when the next
-	uint32_t				next_start;
-	KERNEL_REQUEST_TYPE		request;
-	PD*						next;
+	uint32_t							  next_start;
+
+	TICK 										wcet;
+
+	TICK 										ticks_remaining;
+
+	TICK 										period;
+
+	KERNEL_REQUEST_TYPE			request;
+
+	PD*											next;
 };
 /**
  * Each task is represented by a process descriptor, which contains all
