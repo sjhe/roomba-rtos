@@ -27,6 +27,7 @@ void Ping()
     _delay_ms(500);
     enable_LED(LED_PING);
     _delay_ms(500);
+	Task_Terminate();
     Task_Next();
   }
 }
@@ -40,16 +41,22 @@ void Pong()
     _delay_ms(500);
     enable_LED(LED_ON_BOARD);
     _delay_ms(500);
+	Task_Terminate();
     Task_Next();
   }
+}
+
+void test()
+{
+	for (;;);
 }
 
 void a_main(void)
 {
 	setup();
   // Task_Create( Pong );
-  Task_Create_System( Ping, 2 );
   Task_Create_System( Pong, 1 );
+  Task_Create_System( Ping, 2 );
 
   Task_Terminate();
 

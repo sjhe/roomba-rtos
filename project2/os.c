@@ -9,12 +9,13 @@
 #include <string.h>
 #include <stdio.h>
 
-void Idle(void) 
-{ 
-	for (;;); 
+/** @brief a_main function provided by user application. The first task to run. */
+extern void test();
+static void idle() {
+	for (;;) {
+	}
 }
 
-/** @brief a_main function provided by user application. The first task to run. */
 extern void a_main();
 
 /* Kernel functions */
@@ -108,7 +109,6 @@ void Kernel_Create_Task_At(PD* p)
 		idle_process = p;
 		break;
 	default:
-		idle_process = p;
 		break;
 	}
 }
@@ -257,11 +257,15 @@ void OS_Init()
 		Process[x].state = DEAD;
 	}
 
-	Cp->state = READY;
 	// create idle process
-	//Task_Create_System(Idle, 2);
+	new_task_args->code = test;
+	new_task_args->arg = 0;
+	new_task_args->level = IDLE;
+	Kernel_Create_Task();
+	//Task_Create((voidfuncptr)idle_foo, 0, IDLE);
+
 	Task_Create_System(a_main, 1);
-	Task_Create(Idle, 1, IDLE);
+	Cp->state = READY;
 }
 
 
