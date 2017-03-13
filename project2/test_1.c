@@ -27,10 +27,7 @@ void Idle(){
 void Ping() 
 {
   for(;;){
-    // disable_LEDs();
-    // _delay_ms(5);
-    enable_LED(LED_PING);
-    // _delay_ms(50);
+    enable_LED(LED_ON_BOARD);
     Task_Next();
   }
 }
@@ -53,12 +50,12 @@ void a_main(void)
   setup();
   // disable_LEDs();
 
-  Task_Create_Period( Ping, 2 , 5, 1, 0);
+  // Task_Create_Period( Ping, 2 , 5, 1, 0);
   // Task_Create_Period( Pong, 2 , 5, 1, 5);
 
 
-  // Task_Create_System( Pong, 1 );
-  // Task_Create_System( Ping, 2 );
+  Task_Create_System( Pong, 1 );
+  Task_Create_System( Ping, 2 );
 
   Task_Terminate();
 
