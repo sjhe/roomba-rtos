@@ -30,7 +30,7 @@ void init_LED_ISR(void)
 }
 
 void led_toggle(unsigned int mask){
-	PORTB ^= _BV(mask);		//Initialize port to high
+	PORTB ^= _BV(mask) ;		//Initialize port to high
 }
 
 

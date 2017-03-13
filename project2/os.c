@@ -12,11 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 
-static void Idle(void) 
-{ 
-	for (;;); 
-}
-
+extern void Idle();
 /** @brief a_main function provided by user application. The first task to run. */
 extern void a_main();
 
@@ -159,13 +155,10 @@ static void Kernel_Dispatch()
 		{
 			Cp = Dequeue(&system_queue);
 		}
-		else if(periodic_queue.head != NULL)
+		else if(periodic_queue.head != NULL &&  num_ticks >= periodic_queue.head->next_start)
 		{	
-			if( num_ticks >= periodic_queue.head->next_start){
-				//OS_Abort()
-				Cp = periodic_queue.head;		
-			}else{
-			}
+			// UART_print("p\n");
+			Cp = periodic_queue.head;		
 		}
 		else if (rr_queue.head != NULL)
 		{
@@ -173,6 +166,7 @@ static void Kernel_Dispatch()
 		}
 		else 
 		{
+			// UART_print("idle\n");
 			Cp = idle_process;
 		}
 		CurrentSp = Cp->sp;
@@ -229,10 +223,10 @@ static void Kernel_Handle_Request(void)
 	case TIMER_TICK:
 		switch (Cp->level) {
 			case SYSTEM: // drop down
-				// UART_print("System");
 			case IDLE:
 				break;
 			case PERIODIC: // drop down
+				UART_print("--");
 				Cp->ticks_remaining--;
 				// if (Cp->ticks_remaining <= 0) {
 				// 	errno = ERRNO_PERIODIC_TASK_EXCEEDS_WCET;
@@ -300,8 +294,8 @@ void OS_Init()
 {
 
 // #ifdef DEBUG
-	// UART_Init0(57600);
-	// UART_print("\nboot\n");
+	UART_Init0(57600);
+	UART_print("\nboot\n");
 // #endif
 
 	int x;
@@ -317,10 +311,13 @@ void OS_Init()
 	}
 	Cp->state = READY;
 	// create idle process
-	//Task_Create_System(Idle, 2);
-	// Task_Create_Idle(Idle, 1);
+	// Task_Create_System(Idle, 2);
+	Task_Create_Idle(Idle, 2);
+
 	Task_Create_System(a_main, 1);
-	init_tick_timer();
+
+
+	
 }
 
 
@@ -334,6 +331,8 @@ void OS_Start()
 		/* we may have to initialize the interrupt vector for Enter_Kernel() here. */
 		/* here we go...  */
 		KernelActive = 1;
+		init_tick_timer();
+
 		Kernel_Main_Loop();   /* main loop of the Kernel*/
 	}
 }
@@ -449,9 +448,10 @@ ISR(TIMER3_COMPA_vect) {
 	// Cp->sp = (uint8_t *) ((((uint16_t) *(&CurrentSp + 1) << 8) | (uint16_t) CurrentSp ));
 	// Set the OCR for triggering the interrupt for the next tick (AFTER we've saved the context)
 	num_ticks++;
-	// Task_Next();
 	Cp->request = TIMER_TICK;
 	Enter_Kernel();
+	// Cp->request = TIMER_TICK;
+
 	// Restore the kernel's context, SP first.
 	// XXX: set the SP bytes manually, since setting the SP directly doesn't work!
 
