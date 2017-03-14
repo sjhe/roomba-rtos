@@ -48,7 +48,9 @@
  * is used, the interrupts need to be disabled, or they already are disabled.
  */
 
-
+static void Idle(){
+  for (;;) {}
+}
 
 /* Typedefs and data structures. */
 
@@ -83,7 +85,10 @@ typedef enum kernel_request_type
 	CREATE,
 	TERMINATE,
 	NEXT,
-	TIMER_TICK
+	TIMER_TICK,
+	CREATE_CHANNEL,
+	SEND,
+	RECV
 } KERNEL_REQUEST_TYPE;
 
 
@@ -110,15 +115,11 @@ struct process_struct
 	voidfuncptr  						code;   /* function to be executed as a task */
 	// The tick number for when the next
 	TICK										next_start;
-
 	TICK 										wcet;
-
 	TICK 										ticks_remaining;
-
 	TICK 										period;
-
 	KERNEL_REQUEST_TYPE			request;
-
+	int							retval;
 	PD*											next;
 };
 /**
@@ -131,6 +132,7 @@ struct process_struct
  * state a task is in.
  */
 static PD Process[MAXTHREAD];
+
 
 /**
  * The process descriptor of the currently RUNNING task.
@@ -268,5 +270,15 @@ static PD* Dequeue(queue_t* queue_ptr)
 	return p;
 }
 
+typedef struct channel_struct CH;
+struct channel_struct 
+{
+	CHAN id;
+	PD* sender;
+	queue_t receivers;
+	int val;	
+};
+
+static CH Channels[MAXCHAN];
 
 #endif

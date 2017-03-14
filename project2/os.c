@@ -20,6 +20,10 @@ static void Kernel_Handle_Request(void);
 static void Kernel_Main_Loop(void);
 static void Kernel_Dispatch(void);
 
+static CHAN Kernel_Chan_Init();
+static void Kernel_Send();
+static void Kernel_Recv();
+
 /* Context Switching*/
 extern void Exit_Kernel();    /* this is the same as CSwitch() */
 extern void CSwitch();
@@ -30,21 +34,20 @@ static void Kernel_Create_Task(void);
 void Task_Terminate();
 void Task_Create(voidfuncptr f, int arg, uint8_t level);
 
-/* Queue management */
-//static void Enqueue(queue_t* queue_ptr, PD* p);
-//static PD*  Dequeue(queue_t* queue_ptr);
-
-
 /*ISR Management*/
 static void init_tick_timer();
 
 PD* idle_process;
 
 static volatile PD new_task_args;
+static volatile CH channel_buffer;
 
 static queue_t system_queue;
 static queue_t rr_queue;
 static queue_t periodic_queue;
+
+// kernel request values
+static volatile CHAN kernel_channel_retval;
 
 // The number of elapsed Ticks since OS_Init()
 volatile uint32_t num_ticks = 0;
@@ -113,18 +116,7 @@ void Kernel_Create_Task_At(PD* p)
 		p->wcet						 =  new_task_args.wcet;
 		p->next_start			 =  new_task_args.next_start;
 		p->ticks_remaining =  new_task_args.ticks_remaining ;
-
-
-		// int i = 0;
-		// // enable_LED(LED_PING);
-		// for( i = 0 ; i < p->next_start; i++){
-		// 	enable_LED(LED_PING);
-		// 	_delay_ms(1);
-		// 	disable_LEDs();
-		// }
 		EnqueuePeriodic(&periodic_queue , p);
-
-		// Enqueue(&periodic_queue , p);
 		break;
 	case IDLE:
 		idle_process = p;
@@ -160,7 +152,7 @@ static void Kernel_Create_Task()
 static void Kernel_Dispatch()
 {
 	// find the next READY task 
-	if (Cp->state != RUNNING || Cp == idle_process)
+	if (Cp->state == READY || Cp->state == DEAD || Cp == idle_process)
 	{
 		if (system_queue.head != NULL)
 		{
@@ -230,17 +222,20 @@ static void Kernel_Handle_Request(void)
 		break;
 	case TIMER_TICK:
 		switch (Cp->level) {
-
 			case SYSTEM: // drop down
 			case IDLE:
 				break;
 			case PERIODIC: // drop down
 				// enable_LED(LED_PING);
-				// Cp->ticks_remaining--;
+				Cp->ticks_remaining--;
 				// if (Cp->ticks_remaining <= 0) {
 				// 	errno = ERRNO_PERIODIC_TASK_EXCEEDS_WCET;
 				// 	OS_Abort();
 				// }
+				break;
+			case RR:
+				Cp->state = READY;
+				Enqueue(&rr_queue, Cp);
 				break;
 			// case RR:
 			// 	Cp->ticks_remaining--;
@@ -286,6 +281,15 @@ static void Kernel_Handle_Request(void)
 		// Cp = Dequeue(&system_queue);
 		Kernel_Dispatch();
 		break;
+	case CREATE_CHANNEL:
+		kernel_channel_retval = Kernel_Chan_Init();
+		break;
+	case SEND:
+		Kernel_Send();
+		break;
+	case RECV:
+		Kernel_Recv();
+		break;
 	default:
 		/* Houston! we have a problem here! */
 		break;
@@ -314,15 +318,20 @@ void OS_Init()
 		memset(&(Process[x]), 0, sizeof(PD));
 		Process[x].state = DEAD;
 	}
+
+	// Init channel data structure
+	for (x = 0; x < MAXCHAN; x++) 
+	{
+		memset(&(Channels[x]), 0, sizeof(CH));
+		Channels[x].id = NULL;
+	}
+	
+
 	Cp->state = READY;
 	// create idle process
-	// Task_Create_System(Idle, 2);
 	Task_Create_Idle(Idle, 2);
-
 	Task_Create_System(a_main, 1);
 
-
-	
 }
 
 
@@ -396,6 +405,11 @@ PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK off
 		Kernel_Create_Task();
 	}
 };
+
+int Task_GetArg(void)
+{
+	return Cp->arg;
+}
 
 /**
   * For this example, we only support cooperatively multitasking, i.e.,
@@ -477,35 +491,138 @@ void init_tick_timer() {
   */
 ISR(TIMER3_COMPA_vect) {
 	Disable_Interrupt();
-
-	// unsigned char *CurrentSp
-	// &CurrentSP   < -- > unsigned char CurrentSp  
-	// unsigned char CurrentSp
-	// &CurrentSP  <-->
-	// Cp->sp = (uint8_t *) ((((uint16_t) *(&CurrentSp + 1) << 8) | (uint16_t) CurrentSp ));
-	// Set the OCR for triggering the interrupt for the next tick (AFTER we've saved the context)
-	// enable_LED(LED_ISR);
 	num_ticks++;
-	// disable_LEDs();
 	Cp->request = TIMER_TICK;
-	// disable_LEDs();
 	Enter_Kernel();
+}
 
-	// Enable_Interrupt();
+/**
+  * CHANNEL stuff
+  */
+static CHAN Kernel_Chan_Init()
+{
+	int x;
+	// find empty channel
+	for (x = 0; x < MAXCHAN; x++) 
+	{
+		if (Channels[x].id == NULL)
+		{
+			// initialize channel
+			Channels[x].id = x + 1;
+			Channels[x].sender = NULL;
+			Channels[x].receivers.head = NULL;
+			Channels[x].receivers.tail = NULL;
+			Channels[x].val = 0;
+			break;
+		}
+	}
 
-	// Cp->request = TIMER_TICK;
+	// No empty channels..
+	if (x == MAXCHAN) return NULL;
 
-	// Restore the kernel's context, SP first.
-	// XXX: set the SP bytes manually, since setting the SP directly doesn't work!
+	return Channels[x].id;
+}
 
-	// *(&SP + 1) = (uint8_t) ((volatile uint16_t) KernelSP >> 8);
+CHAN Chan_Init()
+{
+	if (KernelActive)
+	{
+		Disable_Interrupt();
+		Cp->request = CREATE_CHANNEL;
+		Enter_Kernel();
+	}
+	else 
+	{
+		kernel_channel_retval = Kernel_Chan_Init();
+	}
 
-	// Now restore I/O and SREG registers.
-	// RESTORECTX();
-	/*
-	 * Assembly return instruction required since the C-level return expands to assembly code that
-	 * restores context, but we do that manually. Returns to kernel context.
-	 */
+	return kernel_channel_retval;
+}
+
+static void Kernel_Send()
+{
+	CH* channel_ptr = &Channels[channel_buffer.id];
+	// if no receivers waiting then add Cp as sender and block
+	if (channel_ptr->receivers.head == NULL)
+	{
+		// if sender already exists.. then error
+		if (channel_ptr->sender != NULL)
+		{
+			// ABORT!!
+		}
+		channel_ptr->sender = Cp;
+		Cp->state = WAITING;
+		channel_ptr->val = channel_buffer.val;
+		Kernel_Dispatch();
+	}
+	else 
+	{
+		// if there are receivers then give all the receivers their value
+		PD* recv_process = channel_ptr->receivers.head;
+		while (recv_process != NULL)
+		{
+			recv_process->state = READY;
+			recv_process->retval = channel_ptr->val;
+			recv_process = recv_process->next; 
+		}
+	}
+
+}
+
+void Send(CHAN ch, int v)
+{
+	if (KernelActive)
+	{
+		Disable_Interrupt();
+		Cp->request = SEND;
+		channel_buffer.id = ch;
+		channel_buffer.val = v;
+		Enter_Kernel();
+	}
+}
+
+static void Kernel_Recv()
+{
+	CH* channel_ptr = &Channels[channel_buffer.id];
+	// if there is no sender then add to wait queue and block
+	if (channel_ptr->sender == NULL)
+	{
+		Enqueue(&channel_ptr->receivers, Cp);
+		Cp->state = WAITING;
+		Kernel_Dispatch();
+	}
+	else 
+	{
+		// there is a sender then grab the value and set sender state back to ready
+		Cp->retval = channel_ptr->val;
+		channel_ptr->sender->state = READY;
+		channel_ptr->sender = NULL;
+	}
+	
+}
+
+int Recv(CHAN ch)
+{
+	if (KernelActive)
+	{
+		Disable_Interrupt();
+		Cp->request = RECV;
+		channel_buffer.id = ch;
+		channel_buffer.val = NULL;
+		Enter_Kernel();
+	}
+
+	return Cp->retval;
+}
+
+void Write(CHAN ch, int v)
+{
+
+}
+
+unsigned int Now()
+{
+
 }
 
   /**
@@ -515,7 +632,6 @@ ISR(TIMER3_COMPA_vect) {
 void main()
 {
 	OS_Init();
-
 	OS_Start();
 }
 
