@@ -23,6 +23,7 @@ static void Kernel_Dispatch(void);
 static CHAN Kernel_Chan_Init();
 static void Kernel_Send();
 static void Kernel_Recv();
+static void Kernel_Write();
 
 /* Context Switching*/
 extern void Exit_Kernel();    /* this is the same as CSwitch() */
@@ -33,6 +34,7 @@ extern void Enter_Kernel();
 static void Kernel_Create_Task(void);
 void Task_Terminate();
 void Task_Create(voidfuncptr f, int arg, uint8_t level);
+static void EnqueueTaskToStateQueue(PD* process);
 
 /*ISR Management*/
 static void init_tick_timer();
@@ -50,7 +52,7 @@ static queue_t periodic_queue;
 static volatile CHAN kernel_channel_retval;
 
 // The number of elapsed Ticks since OS_Init()
-volatile uint32_t num_ticks = 0;
+volatile unsigned int num_ticks = 0;
 
 /*
  * FUNCTIONS
@@ -152,13 +154,14 @@ static void Kernel_Create_Task()
 static void Kernel_Dispatch()
 {
 	// find the next READY task 
-	if (Cp->state == READY || Cp->state == DEAD || Cp == idle_process)
+	if (Cp->state != RUNNING || Cp == idle_process)
 	{
 		if (system_queue.head != NULL)
 		{
 			Cp = Dequeue(&system_queue);
 		}
-		else if(periodic_queue.head != NULL && num_ticks >= periodic_queue.head-> next_start )
+		//else if(periodic_queue.head != NULL && num_ticks >= periodic_queue.head-> next_start )
+		else if(periodic_queue.head != NULL && (int)(num_ticks - periodic_queue.head->next_start) >= 0)
 		{	
 			// enable_LED(LED_ISR);
 			Cp = periodic_queue.head;						
@@ -175,7 +178,6 @@ static void Kernel_Dispatch()
 		CurrentSp = Cp->sp;
 		Cp->state = RUNNING;
 	}
-
 }
 
 /**
@@ -289,6 +291,9 @@ static void Kernel_Handle_Request(void)
 		break;
 	case RECV:
 		Kernel_Recv();
+		break;
+	case WRITE:
+		Kernel_Write();
 		break;
 	default:
 		/* Houston! we have a problem here! */
@@ -523,6 +528,23 @@ static CHAN Kernel_Chan_Init()
 	return Channels[x].id;
 }
 
+static void EnqueueTaskToStateQueue(PD* process)
+{
+	switch (process->level)
+	{
+	case SYSTEM:
+		Cp->state = READY;
+		Enqueue(&system_queue, Cp);
+		break;
+	case RR:
+		Cp->state = READY;
+		Enqueue(&rr_queue, Cp);
+		break;
+	default:
+		break;
+	}
+}
+
 CHAN Chan_Init()
 {
 	if (KernelActive)
@@ -563,6 +585,10 @@ static void Kernel_Send()
 		{
 			recv_process->state = READY;
 			recv_process->retval = channel_ptr->val;
+
+			// enqueue revc process back into its respective queue
+			EnqueueTaskToStateQueue(recv_process);
+
 			recv_process = recv_process->next; 
 		}
 	}
@@ -596,6 +622,10 @@ static void Kernel_Recv()
 		// there is a sender then grab the value and set sender state back to ready
 		Cp->retval = channel_ptr->val;
 		channel_ptr->sender->state = READY;
+
+		// enqueue sender back into its task queue
+		EnqueueTaskToStateQueue(channel_ptr->sender);
+
 		channel_ptr->sender = NULL;
 	}
 	
@@ -613,6 +643,11 @@ int Recv(CHAN ch)
 	}
 
 	return Cp->retval;
+}
+
+static void Kernel_Write()
+{
+
 }
 
 void Write(CHAN ch, int v)

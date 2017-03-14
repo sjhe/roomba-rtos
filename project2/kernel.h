@@ -88,7 +88,8 @@ typedef enum kernel_request_type
 	TIMER_TICK,
 	CREATE_CHANNEL,
 	SEND,
-	RECV
+	RECV,
+	WRITE
 } KERNEL_REQUEST_TYPE;
 
 
