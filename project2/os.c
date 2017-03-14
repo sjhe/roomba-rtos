@@ -163,9 +163,7 @@ static void Kernel_Dispatch()
 		//else if(periodic_queue.head != NULL && num_ticks >= periodic_queue.head-> next_start )
 		else if(periodic_queue.head != NULL && (int)(num_ticks - periodic_queue.head->next_start) >= 0)
 		{	
-			// enable_LED(LED_ISR);
 			Cp = periodic_queue.head;						
-			// disable_LEDs();
 		}
 		else if (rr_queue.head != NULL)
 		{
