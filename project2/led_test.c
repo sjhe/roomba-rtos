@@ -36,7 +36,7 @@ void led_toggle(unsigned int mask){
 
 void enable_LED(unsigned int mask)
 {
-	PORTB = _BV(mask);		//Initialize port to high
+	PORTB |= _BV(mask);		//Initialize port to high
 }
 
 void disable_LEDs(void)

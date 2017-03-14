@@ -17,10 +17,10 @@
 
 #include <util/delay.h>
 #include "os.h"
-
+#include "led_test.h"
 
 #define DEBUG 1
- 
+
 /** Disable default prescaler to make processor speed 8 MHz. */
 // #define CLOCK8MHZ()    CLKPR = (1<<CLKPCE); CLKPR = 0x00;
 
@@ -109,7 +109,7 @@ struct process_struct
 	/** A link to the next task descriptor in the queue holding this task. */
 	voidfuncptr  						code;   /* function to be executed as a task */
 	// The tick number for when the next
-	uint32_t							  next_start;
+	TICK										next_start;
 
 	TICK 										wcet;
 
@@ -213,14 +213,16 @@ static void EnqueuePeriodic(queue_t* queue_ptr, PD* p)
 {
 	if (queue_ptr->head == NULL)
 	{
-		queue_ptr->head = queue_ptr->tail = p;
+		queue_ptr->head = p;
+		queue_ptr->tail = p;
+		p->next = NULL;
 	}
 	else
 	{
 		PD* cp_curr = queue_ptr->head;
 		PD* cp_prev = NULL;
 
-		while (cp_curr != NULL && cp_curr->next_start < p->next_start)
+		while (cp_curr != NULL && p->next_start > cp_curr->next_start)
 		{
 			cp_prev = cp_curr;
 			cp_curr = cp_curr->next;

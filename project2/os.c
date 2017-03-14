@@ -28,7 +28,7 @@ extern void Enter_Kernel();
 /* Task management  */
 static void Kernel_Create_Task(void);
 void Task_Terminate();
-void Task_Create(voidfuncptr f, int arg, unsigned int level);
+void Task_Create(voidfuncptr f, int arg, uint8_t level);
 
 /* Queue management */
 //static void Enqueue(queue_t* queue_ptr, PD* p);
@@ -39,14 +39,15 @@ void Task_Create(voidfuncptr f, int arg, unsigned int level);
 static void init_tick_timer();
 
 PD* idle_process;
-PD* new_task_args;
+
+static volatile PD new_task_args;
 
 static queue_t system_queue;
 static queue_t rr_queue;
 static queue_t periodic_queue;
 
 // The number of elapsed Ticks since OS_Init()
-uint32_t num_ticks = 0;
+volatile uint32_t num_ticks = 0;
 
 /*
  * FUNCTIONS
@@ -81,25 +82,25 @@ void Kernel_Create_Task_At(PD* p)
 	//Store terminate at the bottom of stack to protect against stack underrun.
 	*(unsigned char *)sp-- = ((unsigned int)Task_Terminate) & 0xff;
 	*(unsigned char *)sp-- = (((unsigned int)Task_Terminate) >> 8) & 0xff;
-
+	*(unsigned char *)sp-- = 0;
 	//Place return address of function at bottom of stack
-	*(unsigned char *)sp-- = ((unsigned int)new_task_args->code) & 0xff;
-	*(unsigned char *)sp-- = (((unsigned int)new_task_args->code) >> 8) & 0xff;
+	*(unsigned char *)sp-- = ((unsigned int)new_task_args.code) & 0xff;
+	*(unsigned char *)sp-- = (((unsigned int)new_task_args.code) >> 8) & 0xff;
 
-	*(unsigned char *)sp-- = (uint8_t)0;
+	*(unsigned char *)sp-- = 0;
 	//Place stack pointer at top of stack
 	sp = sp - 34;
 
 	p->sp = sp;    /* stack pointer into the "workSpace" */
-	p->code = new_task_args->code;		/* function to be executed as a task */
+	p->code = new_task_args.code;		/* function to be executed as a task */
 	p->request = NONE;
 	p->state = READY;
-	p->level = new_task_args->level;
+	p->level = new_task_args.level;
 
 	/* ---- Need to add switch statement for handling ----
 	 * ---- PERIODIC | SYSTEM | RR                    ----
 	 */
-	switch (new_task_args->level) 
+	switch (new_task_args.level) 
 	{
 	case SYSTEM:
 		Enqueue(&system_queue, p);
@@ -108,18 +109,27 @@ void Kernel_Create_Task_At(PD* p)
 		Enqueue(&rr_queue, p);
 		break;
 	case PERIODIC:
-		p->period 				 =  new_task_args->period;
-		p->wcet						 =  new_task_args->wcet;
-		p->next_start			 =  new_task_args->next_start;
-		p->ticks_remaining =  new_task_args->ticks_remaining ;
+		p->period 				 =  new_task_args.period;
+		p->wcet						 =  new_task_args.wcet;
+		p->next_start			 =  new_task_args.next_start;
+		p->ticks_remaining =  new_task_args.ticks_remaining ;
 
+
+		// int i = 0;
+		// // enable_LED(LED_PING);
+		// for( i = 0 ; i < p->next_start; i++){
+		// 	enable_LED(LED_PING);
+		// 	_delay_ms(1);
+		// 	disable_LEDs();
+		// }
 		EnqueuePeriodic(&periodic_queue , p);
+
+		// Enqueue(&periodic_queue , p);
 		break;
 	case IDLE:
 		idle_process = p;
 		break;
 	default:
-		idle_process = p;
 		break;
 	}
 }
@@ -156,9 +166,11 @@ static void Kernel_Dispatch()
 		{
 			Cp = Dequeue(&system_queue);
 		}
-		else if(periodic_queue.head != NULL &&  num_ticks >= periodic_queue.head->next_start)
+		else if(periodic_queue.head != NULL && num_ticks >= periodic_queue.head-> next_start )
 		{	
-			Cp = periodic_queue.head;		
+			// enable_LED(LED_ISR);
+			Cp = periodic_queue.head;						
+			// disable_LEDs();
 		}
 		else if (rr_queue.head != NULL)
 		{
@@ -218,11 +230,13 @@ static void Kernel_Handle_Request(void)
 		break;
 	case TIMER_TICK:
 		switch (Cp->level) {
+
 			case SYSTEM: // drop down
 			case IDLE:
 				break;
 			case PERIODIC: // drop down
-				Cp->ticks_remaining--;
+				// enable_LED(LED_PING);
+				// Cp->ticks_remaining--;
 				// if (Cp->ticks_remaining <= 0) {
 				// 	errno = ERRNO_PERIODIC_TASK_EXCEEDS_WCET;
 				// 	OS_Abort();
@@ -250,12 +264,14 @@ static void Kernel_Handle_Request(void)
 			Enqueue(&system_queue, Cp);
 		}else if(Cp->level == PERIODIC)
 		{
-			Cp = Dequeue(&periodic_queue);
+
+			Dequeue(&periodic_queue);
 			Cp->state = READY;
 			Cp->next_start = Cp->next_start + Cp->period;
-			Cp->ticks_remaining  = Cp->wcet ;
 
+			Cp->ticks_remaining  = Cp->wcet ;
 			EnqueuePeriodic(&periodic_queue, Cp);
+			// Enqueue(&periodic_queue, Cp);
 		}
 		else if (Cp->level == RR)
 		{
@@ -301,7 +317,7 @@ void OS_Init()
 	Cp->state = READY;
 	// create idle process
 	// Task_Create_System(Idle, 2);
-	// Task_Create_Idle(Idle, 2);
+	Task_Create_Idle(Idle, 2);
 
 	Task_Create_System(a_main, 1);
 
@@ -344,13 +360,41 @@ PID Task_Create_RR(void(*f)(void), int arg) {
 };
 
 PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK offset) {
-	new_task_args->period = period;
-	new_task_args->wcet = wcet;
-	new_task_args->ticks_remaining = wcet;
-	new_task_args->next_start = offset;
+	
+	// new_task_args.period = period;
+	// new_task_args.wcet = wcet;
+	// new_task_args.ticks_remaining = wcet;
+	// new_task_args.next_start = offset;
+
+	// Task_Create(f, arg, PERIODIC);
 
 
-	Task_Create(f, arg, PERIODIC);
+	new_task_args.code = f;
+	new_task_args.arg = arg;
+	new_task_args.level = PERIODIC;
+	new_task_args.period = period;
+	new_task_args.wcet = wcet;
+	new_task_args.ticks_remaining = wcet;
+	new_task_args.next_start = offset;
+
+	if (KernelActive) 
+	{
+		Disable_Interrupt();
+		// int i = 0;
+		// for( i = 0 ; i < new_task_args.next_start; i++){
+		// 	enable_LED(LED_PING);
+		// 	_delay_ms(1);
+		// 	disable_LEDs();
+		// }
+		
+		Cp->request = CREATE;
+		Enter_Kernel();
+	}
+	else 
+	{
+		Cp->request = NONE;
+		Kernel_Create_Task();
+	}
 };
 
 /**
@@ -358,24 +402,26 @@ PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK off
   * each task gives up its share of the processor voluntarily by calling
   * Task_Next().
   */
-void Task_Create(voidfuncptr f, int arg, unsigned int level)
+void Task_Create(voidfuncptr f, int arg, uint8_t level)
 {
 	if (KernelActive) 
 	{
 		Disable_Interrupt();
-		new_task_args->code = f;
-		new_task_args->arg = arg;
-		new_task_args->level = (uint8_t)level;
+		new_task_args.code = f;
+		new_task_args.arg = arg;
+		new_task_args.level = (uint8_t)level;
+
 
 		Cp->request = CREATE;
 		Enter_Kernel();
 	}
 	else 
 	{
-		new_task_args->code = f;
-		new_task_args->arg = arg;
-		new_task_args->level = (uint8_t)level;
+		new_task_args.code = f;
+		new_task_args.arg = arg;
+		new_task_args.level = (uint8_t)level;
 		Cp->request = NONE;
+
 
 		Kernel_Create_Task();
 	}
@@ -429,31 +475,38 @@ void init_tick_timer() {
 /**
   * Interrupt service routine
   */
-// ISR(TIMER3_COMPA_vect) {
-// 	Disable_Interrupt();
-// 	// unsigned char *CurrentSp
-// 	// &CurrentSP   < -- > unsigned char CurrentSp  
-// 	// unsigned char CurrentSp
-// 	// &CurrentSP  <-->
-// 	// Cp->sp = (uint8_t *) ((((uint16_t) *(&CurrentSp + 1) << 8) | (uint16_t) CurrentSp ));
-// 	// Set the OCR for triggering the interrupt for the next tick (AFTER we've saved the context)
-// 	num_ticks++;
-// 	Cp->request = TIMER_TICK;
-// 	Enter_Kernel();
-// 	// Cp->request = TIMER_TICK;
+ISR(TIMER3_COMPA_vect) {
+	Disable_Interrupt();
 
-// 	// Restore the kernel's context, SP first.
-// 	// XXX: set the SP bytes manually, since setting the SP directly doesn't work!
+	// unsigned char *CurrentSp
+	// &CurrentSP   < -- > unsigned char CurrentSp  
+	// unsigned char CurrentSp
+	// &CurrentSP  <-->
+	// Cp->sp = (uint8_t *) ((((uint16_t) *(&CurrentSp + 1) << 8) | (uint16_t) CurrentSp ));
+	// Set the OCR for triggering the interrupt for the next tick (AFTER we've saved the context)
+	// enable_LED(LED_ISR);
+	num_ticks++;
+	// disable_LEDs();
+	Cp->request = TIMER_TICK;
+	// disable_LEDs();
+	Enter_Kernel();
 
-// 	// *(&SP + 1) = (uint8_t) ((volatile uint16_t) KernelSP >> 8);
+	// Enable_Interrupt();
 
-// 	// Now restore I/O and SREG registers.
-// 	// RESTORECTX();
-// 	/*
-// 	 * Assembly return instruction required since the C-level return expands to assembly code that
-// 	 * restores context, but we do that manually. Returns to kernel context.
-// 	 */
-// }
+	// Cp->request = TIMER_TICK;
+
+	// Restore the kernel's context, SP first.
+	// XXX: set the SP bytes manually, since setting the SP directly doesn't work!
+
+	// *(&SP + 1) = (uint8_t) ((volatile uint16_t) KernelSP >> 8);
+
+	// Now restore I/O and SREG registers.
+	// RESTORECTX();
+	/*
+	 * Assembly return instruction required since the C-level return expands to assembly code that
+	 * restores context, but we do that manually. Returns to kernel context.
+	 */
+}
 
   /**
 	* This function creates two cooperative tasks, "Ping" and "Pong". Both
