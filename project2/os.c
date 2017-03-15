@@ -578,7 +578,7 @@ static void Kernel_Send()
 	else 
 	{
 		// if there are receivers then give all the receivers their value
-		PD* recv_process = channel_ptr->receivers.head;
+		PD* recv_process = Dequeue(channel_ptr->receivers);
 		while (recv_process != NULL)
 		{
 			recv_process->state = READY;
@@ -587,7 +587,7 @@ static void Kernel_Send()
 			// enqueue revc process back into its respective queue
 			EnqueueTaskToStateQueue(recv_process);
 
-			recv_process = recv_process->next; 
+			recv_process = Dequeue(channel_ptr->receivers);
 		}
 	}
 
