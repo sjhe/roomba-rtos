@@ -223,9 +223,11 @@ static void Kernel_Handle_Request(void)
 	case TIMER_TICK:
 		switch (Cp->level) {
 			case SYSTEM: // drop down
+				break;
 			case IDLE:
 				break;
 			case PERIODIC: // drop down
+				Cp->state = READY;
 				// enable_LED(LED_PING);
 				Cp->ticks_remaining--;
 				// if (Cp->ticks_remaining <= 0) {
@@ -246,7 +248,6 @@ static void Kernel_Handle_Request(void)
 			// 	}
 			// 	break;
 		}
-		Cp->state = READY;
 		Kernel_Dispatch();
 		break;
 	case NEXT:
@@ -531,12 +532,12 @@ static void EnqueueTaskToStateQueue(PD* process)
 	switch (process->level)
 	{
 	case SYSTEM:
-		Cp->state = READY;
-		Enqueue(&system_queue, Cp);
+		process->state = READY;
+		Enqueue(&system_queue, process);
 		break;
 	case RR:
-		Cp->state = READY;
-		Enqueue(&rr_queue, Cp);
+		process->state = READY;
+		Enqueue(&rr_queue, process);
 		break;
 	default:
 		break;
@@ -582,13 +583,15 @@ static void Kernel_Send()
 		while (recv_process != NULL)
 		{
 			recv_process->state = READY;
-			recv_process->retval = channel_ptr->val;
+			recv_process->retval = channel_buffer.val;
 
 			// enqueue revc process back into its respective queue
 			EnqueueTaskToStateQueue(recv_process);
 
 			recv_process = Dequeue(&channel_ptr->receivers);
 		}
+		channel_ptr->receivers.head = NULL;
+		channel_ptr->sender = NULL;
 	}
 
 }
@@ -611,8 +614,8 @@ static void Kernel_Recv()
 	// if there is no sender then add to wait queue and block
 	if (channel_ptr->sender == NULL)
 	{
-		Enqueue(&channel_ptr->receivers, Cp);
 		Cp->state = WAITING;
+		Enqueue(&channel_ptr->receivers, Cp);
 		Kernel_Dispatch();
 	}
 	else 
@@ -636,8 +639,9 @@ int Recv(CHAN ch)
 		Disable_Interrupt();
 		Cp->request = RECV;
 		channel_buffer.id = ch;
-		channel_buffer.val = NULL;
+		channel_buffer.val = 0;
 		Enter_Kernel();
+		led_toggle(LED_ON_BOARD);
 	}
 
 	return Cp->retval;
