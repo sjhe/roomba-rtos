@@ -11,18 +11,8 @@
 #include <string.h>
 #include <stdio.h>
 
-<<<<<<< HEAD
-/** @brief a_main function provided by user application. The first task to run. */
-extern void test();
-static void idle() {
-	for (;;) {
-	}
-}
-
-=======
 extern void Idle();
 /** @brief a_main function provided by user application. The first task to run. */
->>>>>>> master
 extern void a_main();
 
 /* Kernel functions */
@@ -340,17 +330,6 @@ void OS_Init()
 		Process[x].state = DEAD;
 	}
 
-<<<<<<< HEAD
-	// create idle process
-	new_task_args->code = test;
-	new_task_args->arg = 0;
-	new_task_args->level = IDLE;
-	Kernel_Create_Task();
-	//Task_Create((voidfuncptr)idle_foo, 0, IDLE);
-
-	Task_Create_System(a_main, 1);
-	Cp->state = READY;
-=======
 	// Init channel data structure
 	for (x = 0; x < MAXCHAN; x++) 
 	{
@@ -365,7 +344,6 @@ void OS_Init()
 	// create idle process
 	Task_Create_Idle(Idle, 2);
 	Task_Create_System(a_main, 1);
->>>>>>> master
 }
 
 
