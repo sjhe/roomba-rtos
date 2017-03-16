@@ -18,7 +18,7 @@ CHAN  chan;
 
 void Task_P1(int parameter)
 {
-	PORTB |= (1<<PB3);	
+	PORTB |= (1<<PB3);
 	_delay_ms(100); // sleep 100ms
 	PORTB &= ~(1<<PB3);	//pin 50 off
 	Task_Next();
@@ -27,6 +27,7 @@ void Task_P1(int parameter)
 	Recv(chan);
 	PORTB &= ~(1<<PB3);	//pin 50 off
 
+	Task_Next();
 	// Mutex_Lock(mut);
     for(;;);
 }
@@ -42,6 +43,7 @@ void Task_P2(int parameter)
 	Send(chan, 1);
 	PORTB &= ~(1<<PB2);	//pin 51 off
 
+	Task_Next();
   for(;;);
 }
 
@@ -55,6 +57,7 @@ void Task_P3(int parameter)
 	PORTB |= (1<<PB1);	//pin 52 on
 	PORTB &= ~(1<<PB1);	//pin 52 off
 
+	Task_Next();
   for(;;);
 }
 
@@ -63,13 +66,12 @@ void a_main(int parameter)
 	chan = Chan_Init();
 
 
-
+	//init_pin(LED_PING);
 	//Place these as necessary to display output if not already doing so inside the RTOS
 	//initialize pins
 	DDRB |= (1<<PB1);	//pin 52
 	DDRB |= (1<<PB2);	//pin 51	
 	DDRB |= (1<<PB3);	//pin 50
-	
 	
 	// PORTB |= (1<<PB1);	//pin 52 on
 	// PORTB |= (1<<PB2);	//pin 51 on
