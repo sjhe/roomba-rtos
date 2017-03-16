@@ -357,6 +357,9 @@ void OS_Start()
 }
 
 
+int Task_GetArg(void) {
+	return Cp->arg;
+}
 /*
  * Task management.
  */

@@ -4,7 +4,7 @@
  * @date   
  * 
  * @brief  Test 002 - Send /Recv
- * Testing for
+ * 
  */
 #include "kernel.h"
 #include "os.h"
