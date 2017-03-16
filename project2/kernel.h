@@ -17,6 +17,9 @@
 
 #include <util/delay.h>
 #include "os.h"
+#include "led_test.h"
+
+#define DEBUG 1
 
 /** Disable default prescaler to make processor speed 8 MHz. */
 // #define CLOCK8MHZ()    CLKPR = (1<<CLKPCE); CLKPR = 0x00;
@@ -35,7 +38,19 @@
 
 /** LEDs for OS_Abort() */
 // #define LED_GREEN_MASK   
+/**
+ * It is important to keep the order of context saving and restoring exactly
+ * in reverse. Also, when a new task is created, it is important to
+ * initialize its "initial" context in the same order as a saved context.
+ *
+ * Save r31 and SREG on stack, disable interrupts, then save
+ * the rest of the registers on the stack. In the locations this macro
+ * is used, the interrupts need to be disabled, or they already are disabled.
+ */
 
+static void Idle(){
+  for (;;) {}
+}
 
 /* Typedefs and data structures. */
 
@@ -70,15 +85,21 @@ typedef enum kernel_request_type
 	CREATE,
 	TERMINATE,
 	NEXT,
-	TASK_GET_ARG,
-	EVENT_INIT,
-	EVENT_WAIT,
-	EVENT_SIGNAL,
-	EVENT_BROADCAST,
-	EVENT_SIGNAL_AND_NEXT,
-	EVENT_BROADCAST_AND_NEXT
+	TIMER_TICK,
+	CREATE_CHANNEL,
+	SEND,
+	RECV,
+	WRITE
 } KERNEL_REQUEST_TYPE;
 
+typedef enum error_code_type
+{
+	PERIODIC_TASK_EXCEEDS_WCET = 0,
+	PERIODIC_TASK_TIMING_CONFLICT,
+	SENDER_CONFLICT,
+	MAX_THREADS_REACHED,
+	MAX_CHANNELS_CREATED
+} ERROR_CODE_TYPE;
 
 
 typedef struct process_struct PD;
@@ -100,11 +121,15 @@ struct process_struct
 	/** The priority (type) of this task. */
 	uint8_t                 level;
 	/** A link to the next task descriptor in the queue holding this task. */
-	voidfuncptr  			code;   /* function to be executed as a task */
+	voidfuncptr  						code;   /* function to be executed as a task */
 	// The tick number for when the next
-	uint32_t				next_start;
-	KERNEL_REQUEST_TYPE		request;
-	PD*						next;
+	TICK										next_start;
+	TICK 										wcet;
+	TICK 										ticks_remaining;
+	TICK 										period;
+	KERNEL_REQUEST_TYPE			request;
+	volatile int							retval;
+	PD*											next;
 };
 /**
  * Each task is represented by a process descriptor, which contains all
@@ -116,6 +141,7 @@ struct process_struct
  * state a task is in.
  */
 static PD Process[MAXTHREAD];
+
 
 /**
  * The process descriptor of the currently RUNNING task.
@@ -139,9 +165,6 @@ volatile unsigned char *KernelSp;
  */
 volatile unsigned char *CurrentSp;
 
-/** index to next task to run */
-volatile static unsigned int NextP;  
-
 /** 1 if kernel has been started; 0 otherwise. */
 volatile static unsigned int KernelActive;  
 
@@ -154,9 +177,9 @@ volatile static unsigned int Tasks;
 typedef struct
 {
 	/** The first item in the queue. NULL if the queue is empty. */
-	PD*  head;
+	volatile PD*  head;
 	/** The last item in the queue. Undefined if the queue is empty. */
-	PD*  tail;
+	volatile PD*  tail;
 } queue_t;
 
 
@@ -198,14 +221,16 @@ static void EnqueuePeriodic(queue_t* queue_ptr, PD* p)
 {
 	if (queue_ptr->head == NULL)
 	{
-		queue_ptr->head = queue_ptr->tail = p;
+		queue_ptr->head = p;
+		queue_ptr->tail = p;
+		p->next = NULL;
 	}
 	else
 	{
 		PD* cp_curr = queue_ptr->head;
 		PD* cp_prev = NULL;
 
-		while (cp_curr != NULL && p->next_start < p->next_start)
+		while (cp_curr != NULL && p->next_start > cp_curr->next_start)
 		{
 			cp_prev = cp_curr;
 			cp_curr = cp_curr->next;
@@ -251,5 +276,15 @@ static PD* Dequeue(queue_t* queue_ptr)
 	return p;
 }
 
+typedef struct channel_struct CH;
+struct channel_struct 
+{
+	volatile CHAN id;
+	volatile PD* sender;
+	volatile queue_t receivers;
+	volatile int val;	
+};
+
+static CH Channels[MAXCHAN];
 
 #endif

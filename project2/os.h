@@ -42,7 +42,7 @@ void OS_Abort(unsigned int error);
  * System and RR tasks are first-come-first-served. They run until they terminate, block
  * or yield.
  */
-
+PID   Task_Create_Idle  (void(*f)(void), int arg);
 PID   Task_Create_System(void (*f)(void), int arg);
 PID   Task_Create_RR(    void (*f)(void), int arg);
 

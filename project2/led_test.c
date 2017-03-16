@@ -29,10 +29,14 @@ void init_LED_ISR(void)
 	PORTB = 0x00;		//Initialize port to LOW (turn off LEDs)
 }
 
+void led_toggle(unsigned int mask){
+	PORTB ^= _BV(mask) ;		//Initialize port to high
+}
+
 
 void enable_LED(unsigned int mask)
 {
-	PORTB = _BV(mask);		//Initialize port to high
+	PORTB |= _BV(mask);		//Initialize port to high
 }
 
 void disable_LEDs(void)
