@@ -30,7 +30,7 @@ void Ping()
 		index++;
 		index = index % 1000;
 
-		Write(channel_id, 1);
+		Write(channel_id, index);
 		Task_Next();
 	}
 }
@@ -70,7 +70,7 @@ void a_main(void)
 	setup();
 	channel_id = Chan_Init();
 
-	Task_Create_System( Pong, 1 );
 	Task_Create_System( Ping, 2 );
-	Task_Create_System( Pang, 1 );
+	Task_Create_System( Pong, 1 );
+	//Task_Create_System( Pang, 1 );
 }
