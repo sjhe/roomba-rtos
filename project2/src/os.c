@@ -1,5 +1,7 @@
 #include "os.h"
 #include "kernel.h"
+#include "error.h"
+
 
 #include "led_test.h"
 
@@ -61,6 +63,33 @@ volatile unsigned int num_ticks = 0;
   *  @brief The Idle task does nothing but busy loop.
   */
 
+void OS_Abort(unsigned int error) {
+	// Clear interrupts, this is an irrecoverable error, we don't want to leave this function ever.
+	cli();
+
+	// if (os_err_handler != NULL ) {
+	// 	os_err_handler();
+	// }
+
+// #ifdef DEBUG
+// 	UART_print("ABORT! ERRNO: %d", errno);
+// #endif
+
+	DDRB = _BV(PB3) | _BV(PB2);
+	int i;
+	for (;;) {
+		for (i = 0; i < errno; i++) {
+			// Flash PB3 LED 'errno' number of times
+			PORTB = ~_BV(PB3);
+			_delay_ms(300);
+			PORTB = 0xFF;
+			_delay_ms(300);
+		}
+		PORTB = ~_BV(PB2);
+		_delay_ms(1000);
+	}
+}
+
 /**
  * When creating a new task, it is important to initialize its stack just like
  * it has called "Enter_Kernel()"; so that when we switch to it later, we
@@ -98,6 +127,7 @@ void Kernel_Create_Task_At(PD* p)
 
 	p->sp = sp;    /* stack pointer into the "workSpace" */
 	p->code = new_task_args.code;		/* function to be executed as a task */
+	p->arg  = new_task_args.arg;
 	p->request = NONE;
 	p->state = READY;
 	p->level = new_task_args.level;
@@ -315,6 +345,9 @@ void OS_Init()
 	Tasks = 0;
 	KernelActive = 0;
 	NextP = 0;
+
+	os_err_handler = NULL;
+
 	//Reminder: Clear the memory for the task on creation.
 	//Init Kernel data structures
 	for (x = 0; x < MAXTHREAD; x++) 
@@ -356,10 +389,6 @@ void OS_Start()
 	}
 }
 
-
-int Task_GetArg(void) {
-	return Cp->arg;
-}
 /*
  * Task management.
  */
@@ -372,6 +401,7 @@ PID Task_Create_System(void(*f)(void), int arg) {
 };
 
 PID Task_Create_RR(void(*f)(void), int arg) {
+
 	Task_Create(f, arg, RR);
 };
 
@@ -431,7 +461,6 @@ void Task_Create(voidfuncptr f, int arg, uint8_t level)
 		new_task_args.code = f;
 		new_task_args.arg = arg;
 		new_task_args.level = (uint8_t)level;
-
 
 		Cp->request = CREATE;
 		Enter_Kernel();

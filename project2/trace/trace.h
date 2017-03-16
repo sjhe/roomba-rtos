@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <avr/common.h>
 
-#include "BlockingUART.h"
+#include "../uart/uart.h"
 #include "../src/os.h"
 
 #define MAX_TRACE_LENGTH 64

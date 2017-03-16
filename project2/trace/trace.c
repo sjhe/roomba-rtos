@@ -35,9 +35,9 @@ char * get_trace() {
     return str_trace;
 }
 
-void set_error_handler(void (*funct)(void)) {
-    os_err_handler = funct;
-}
+// void set_error_handler(void (*funct)(void)) {
+//     os_err_handler = funct;
+// }
 
 void print_trace(void) {
     uint16_t i;

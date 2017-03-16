@@ -5,8 +5,6 @@
  *      Author: andpol
  */
 
-#ifndef BLOCKINGUART_H_
-#define BLOCKINGUART_H_
 
 #include <avr/common.h>
 
@@ -19,5 +17,3 @@ void UART_Transmit0(unsigned char data);
 unsigned char UART_Receive0();
 void UART_print(const char* fmt, ...);
 void UART_send_raw_bytes(const uint8_t num_bytes, const uint8_t* data);
-
-#endif /* BLOCKINGUART_H_ */
