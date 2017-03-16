@@ -14,42 +14,45 @@
 CHAN * print_channel;
 CHAN * test_channel;
 
-void test_signal() {
+void test_Send() {
 	int arg = Task_GetArg();
 	for (;;) {
 		add_trace(arg, ENTER);
-		Send(test_channel, 1 );
+		Send(test_channel,1 );
 		add_trace(arg, EXIT);
-		Send(print_channel,1 );
 		Task_Next();
 	}
 }
 
-void test_waiting() {
+void test_Recv() {
 	int arg = Task_GetArg();
 	int value = NULL;
 	for (;;) {
 		add_trace(arg, ENTER);
 		value = Recv(test_channel);
-		if(value > 0){
-			add_trace(arg, EXIT);
-			Task_Next();
+		add_trace(arg, EXIT);
+		if(arg == 3 ){
+			Send(print_channel,value);	
 		}
-
+		Task_Next();
 	}
+}
+
+void err_handler() {
+	UART_print("fail");
 }
 
 void test_results() {
 	int value = Recv(print_channel);
 	if(value > 0){
 		char * trace = get_trace();
-		char * correct_trace = "(0,(1,0),(0,1),";
+		// char * correct_trace = "(0,0),(1,1),";
 		UART_print("Trace: %s\n", trace);
-		if (strcmp(correct_trace, trace) == 0) {
-			UART_print("pass");
-		} else {
-			UART_print("fail");
-		}
+		// if (strcmp(correct_trace, trace) == 0) {
+		// 	UART_print("pass");
+		// } else {
+		// 	UART_print("fail");
+		// }
 	}
 }
 
@@ -62,6 +65,10 @@ void a_main() {
 
 	UART_print("\ntest begin\n");
 
-	Task_Create_Period(test_signal, 0, 50, 10, 0);
-	Task_Create_RR(test_waiting, 1);
+	Task_Create_RR(test_Recv, 1);
+	Task_Create_RR(test_Recv, 2);
+	Task_Create_RR(test_Recv, 3);
+
+	Task_Create_RR(test_Send, 4);
+
 }
