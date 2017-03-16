@@ -12,11 +12,13 @@
 #define LED_ON_BOARD	PB7
 #define LED_PING 	    PB6
 #define LED_ISR 	    PB5
-
+#define PIN10			PB4
+#define PIN09			PH6
 
 void init_LED_ON_BOARD();
 void init_LED_PING();
 void init_LED_ISR();
+void init_pin(unsigned int mask);
 void toggle_LED_ON_BOARD();
 void enable_LED(unsigned int mask);
 void disable_LEDs(void);

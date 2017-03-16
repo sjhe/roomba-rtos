@@ -6,9 +6,9 @@
  * @brief  Test 002 - Send /Recv
  * 
  */
-#include "kernel.h"
-#include "os.h"
-#include "led_test.h"
+#include "../src/kernel.h"
+#include "../src/os.h"
+#include "../src/led_test.h"
 
 
 volatile CHAN channel_id = 0;
@@ -86,6 +86,6 @@ void a_main(void)
 //	Task_Create_System( Pang, 1 );
 
 	Task_Create_Period( Peng, 2 , 10, 1, 0);
-	Task_Create_Period( Peng, 2 , 10, 1, 0);
+	Task_Create_Period( Peng, 2 , 10, 1, 1);
 
 }
