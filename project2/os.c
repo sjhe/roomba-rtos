@@ -327,10 +327,8 @@ void OS_Init()
 	for (x = 0; x < MAXCHAN; x++) 
 	{
 		memset(&(Channels[x]), 0, sizeof(CH));
-		Channels[x].id = NULL;
+		Channels[x].id = 0;
 		Channels[x].sender = NULL;
-		Channels[x].receivers.head = NULL;
-		Channels[x].receivers.tail = NULL;
 		Channels[x].val = 0;
 	}
 	
@@ -495,7 +493,7 @@ static CHAN Kernel_Chan_Init()
 	// find empty channel
 	for (x = 0; x < MAXCHAN; x++) 
 	{
-		if (Channels[x].id == NULL)
+		if (Channels[x].id == 0)
 		{
 			// initialize channel
 			Channels[x].id = x + 1;
@@ -559,20 +557,18 @@ static void Kernel_Send()
 		}
 		channel_ptr->sender = Cp;
 		Cp->state = WAITING;
-		Cp->request = NONE;
 		channel_ptr->val = channel_buffer.val;
 		Kernel_Dispatch();
 	}
 	else 
 	{
 		// if there are receivers then give all the receivers their value
-		PD* recv_process = Dequeue(&channel_ptr->receivers);
+		PD* recv_process = Dequeue(&(channel_ptr->receivers));
 		while (recv_process != NULL)
 		{
 			recv_process->state = READY;
 			recv_process->retval = channel_buffer.val;
-			recv_process->request = NONE;	
-			recv_process->next = NULL;
+
 			// enqueue revc process back into its respective queue
 			EnqueueTaskToStateQueue(recv_process);
 
@@ -603,8 +599,7 @@ static void Kernel_Recv()
 	if (channel_ptr->sender == NULL)
 	{
 		Cp->state = WAITING;
-		Cp->next = NULL;
-		Cp->request = NONE;
+		Cp->retval = NULL;
 		Enqueue(&(channel_ptr->receivers), Cp);
 		Kernel_Dispatch();
 	}
@@ -613,16 +608,13 @@ static void Kernel_Recv()
 		// there is a sender then grab the value and set sender state back to ready
 		Cp->retval = channel_ptr->val;
 		channel_ptr->sender->state = READY;
-		channel_ptr->sender->request = NONE;
-		Cp->request = NONE;
-
+	
 		// enqueue sender back into its task queue
 		EnqueueTaskToStateQueue(channel_ptr->sender);
 
 		channel_ptr->receivers.head = NULL;
 		channel_ptr->sender = NULL;
 	}
-	
 }
 
 int Recv(CHAN ch)
@@ -641,12 +633,36 @@ int Recv(CHAN ch)
 
 static void Kernel_Write()
 {
+	CH* channel_ptr = &(Channels[channel_buffer.id]);
+	// if there are receivers then give all the receivers their value
+	if (channel_ptr->receivers.head != NULL)
+	{
+		PD* recv_process = Dequeue(&(channel_ptr->receivers));
+		while (recv_process != NULL)
+		{
+			recv_process->state = READY;
+			recv_process->retval = channel_buffer.val;
 
+			// enqueue revc process back into its respective queue
+			EnqueueTaskToStateQueue(recv_process);
+
+			recv_process = Dequeue(&(channel_ptr->receivers));
+		}
+		channel_ptr->receivers.head = NULL;
+		channel_ptr->sender = NULL;
+	}
 }
 
 void Write(CHAN ch, int v)
 {
-
+	if (KernelActive)
+	{
+		Disable_Interrupt();
+		Cp->request = WRITE;
+		channel_buffer.id = ch;
+		channel_buffer.val = v;
+		Enter_Kernel();
+	}
 }
 
 unsigned int Now()

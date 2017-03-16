@@ -30,7 +30,7 @@ void Ping()
 		index++;
 		index = index % 1000;
 
-		Send(channel_id, index);
+		Write(channel_id, 1);
 		Task_Next();
 	}
 }
@@ -41,9 +41,11 @@ void Pong()
 	// disable_LEDs();
 	for(;;){
 		index = Recv(channel_id);
-		if(index == 0){
-			led_toggle(LED_PING);
-		} 
+		if(index == 1){
+			led_toggle(LED_ON_BOARD);
+		}
+		else {
+		}
 
 		Task_Next();
 	}
@@ -55,8 +57,8 @@ void Pang()
 	// disable_LEDs();
 	for(;;){
 		index = Recv(channel_id);
-		if(index == 0){
-			led_toggle(LED_ON_BOARD);
+		if(index == 1){
+			led_toggle(LED_PING);
 		}
 
 		Task_Next();
@@ -68,7 +70,7 @@ void a_main(void)
 	setup();
 	channel_id = Chan_Init();
 
-	Task_Create_System( Pang, 1 );
 	Task_Create_System( Pong, 1 );
 	Task_Create_System( Ping, 2 );
+	Task_Create_System( Pang, 1 );
 }
