@@ -736,7 +736,7 @@ void Write(CHAN ch, int v)
 
 unsigned int Now()
 {
-
+	return num_ticks * TICK + TCNT3 / OCR_MAX_VAL;
 }
 
   /**
