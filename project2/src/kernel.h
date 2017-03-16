@@ -146,7 +146,7 @@ static PD Process[MAXTHREAD];
 /**
  * The process descriptor of the currently RUNNING task.
  */
-volatile static PD* Cp = NULL; 
+volatile static PD* Cp; 
 
 /** 
  * Since this is a "full-served" model, the kernel is executing using its own

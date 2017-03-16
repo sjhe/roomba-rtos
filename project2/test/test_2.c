@@ -11,88 +11,81 @@
 #include "led_test.h"
 
 
-CHAN channel_id = NULL;
+volatile CHAN channel_id = 0;
 
 void setup () {
-  init_LED_ON_BOARD();
-  init_LED_PING();
-  init_LED_ISR();
+	init_LED_ON_BOARD();
+	init_LED_PING();
+	init_LED_ISR();
 }
 /*============
-* A Simple Test 
-* ============
-*/
+ * A Simple Test 
+ * ============
+ */
 
 void Ping() 
 {
-  unsigned int index = 1;
-  for(;;){
+	int index = 0;
+	for(;;){
+		index++;
+		index = index % 1000;
 
-    if(channel_id == 1){
-      if(index == 1){
-        index = 0;
-        Send(channel_id, 0);
-      }else{
-        index = 1;
-        Send(channel_id, 1);
-      }
-    }
-      Task_Next();
-  }
+		Send(channel_id, index);
+		Task_Next();
+	}
 }
 // Pong
 void Pong() 
 {
-  unsigned int index = 0;
-  // disable_LEDs();
-  for(;;){
-    index = Recv(channel_id);
-    if(index == 0){
-      enable_LED(LED_ON_BOARD);
-      _delay_ms(50);
-    }
+	int index = 0;
+	// disable_LEDs();
+	for(;;){
+		Send(channel_id, index);
+		index = Recv(channel_id);
+		if(index == 1){
+			led_toggle(LED_ON_BOARD);
+		}
+		else {
+		}
 
-    Task_Next();
-  }
+	//	Task_Next();
+	}
 }
 
-// Pong
-void DisableAll() 
+void Pang() 
 {
-  unsigned int index = 0;
-  // disable_LEDs();
-  for(;;){
-    index = Recv(channel_id);
-    if(index == 1){
-      disable_LEDs();
-      _delay_ms(50);
-    }
-    Task_Next();
-  }
+	int index = 0;
+	// disable_LEDs();
+	for(;;){
+		index = Recv(channel_id);
+		if(index == 1){
+			led_toggle(LED_PING);
+		}
+
+	//	Task_Next();
+	}
+}
+
+void Peng()
+{
+	for (;;)
+	{
+		led_toggle(LED_PING);
+
+		Task_Next();
+	}
 }
 
 void a_main(void)
 {
-  setup();
-  channel_id = Chan_Init();
-  int i = 0 ;
+	setup();
+	channel_id = Chan_Init();
 
-  if(channel_id != NULL){
-    Task_Create_System( Pong, 1 );
-    Task_Create_System( Ping, 2 );
-    Task_Create_System( DisableAll, 3 );
-  }
+//	Task_Create_System( Ping, 2 );
+//	Task_Create_System( Pong, 1 );
+//	Task_Create_System( Pang, 1 );
 
-  // channel_id = Chan_Init();
-
-  // enable_LED(LED_PING);
-  // for(i = 0 ; i < channel_id; i++){
-  //     _delay_ms(1);
-  //   }
-  // disable_LEDs();
-
-  
-
-  Task_Terminate();
+	Task_Create_Period( Peng, 2 , 10, 1, 0);
+	Task_Create_Period( Peng, 2 , 10, 1, 0);
 
 }

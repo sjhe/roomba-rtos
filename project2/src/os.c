@@ -98,7 +98,7 @@ void Kernel_Create_Task_At(PD* p)
 
 	p->sp = sp;    /* stack pointer into the "workSpace" */
 	p->code = new_task_args.code;		/* function to be executed as a task */
-	p->arg  = new_task_args.arg;
+	p->arg  = new_task_args.arg;		/* function to be executed as a task */
 	p->request = NONE;
 	p->state = READY;
 	p->level = new_task_args.level;
@@ -655,7 +655,7 @@ void Send(CHAN ch, int v)
 	{
 		Disable_Interrupt();
 		Cp->request = SEND;
-		channel_buffer.id  = ch;
+		channel_buffer.id = ch;
 		channel_buffer.val = v;
 		Enter_Kernel();
 	}

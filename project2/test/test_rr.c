@@ -39,7 +39,7 @@ void test_results() {
     int value = Recv(channel_id);
     if(value > 0){
         char * trace = get_trace();
-        char * correct_trace = "(0,0),(1,1),(2,2),(3,3),(4,4),(5,5),";
+        char * correct_trace = "(1,1),(2,2),(3,3),(4,4),(5,5),";
         UART_print("Trace: %s\n", trace);
         if (strcmp(correct_trace, trace) == 0) {
             UART_print("pass");
