@@ -120,7 +120,7 @@ struct process_struct
 	TICK 										ticks_remaining;
 	TICK 										period;
 	KERNEL_REQUEST_TYPE			request;
-	int							retval;
+	volatile int							retval;
 	PD*											next;
 };
 /**
@@ -172,9 +172,9 @@ volatile static unsigned int Tasks;
 typedef struct
 {
 	/** The first item in the queue. NULL if the queue is empty. */
-	PD*  head;
+	volatile PD*  head;
 	/** The last item in the queue. Undefined if the queue is empty. */
-	PD*  tail;
+	volatile PD*  tail;
 } queue_t;
 
 
@@ -274,10 +274,10 @@ static PD* Dequeue(queue_t* queue_ptr)
 typedef struct channel_struct CH;
 struct channel_struct 
 {
-	CHAN id;
-	PD* sender;
-	queue_t receivers;
-	int val;	
+	volatile CHAN id;
+	volatile PD* sender;
+	volatile queue_t receivers;
+	volatile int val;	
 };
 
 static CH Channels[MAXCHAN];

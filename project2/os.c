@@ -223,12 +223,12 @@ static void Kernel_Handle_Request(void)
 	case TIMER_TICK:
 		switch (Cp->level) {
 			case SYSTEM: // drop down
+				Cp->state = RUNNING;
 				break;
 			case IDLE:
 				break;
 			case PERIODIC: // drop down
 				Cp->state = READY;
-				// enable_LED(LED_PING);
 				Cp->ticks_remaining--;
 				// if (Cp->ticks_remaining <= 0) {
 				// 	errno = ERRNO_PERIODIC_TASK_EXCEEDS_WCET;
@@ -328,6 +328,10 @@ void OS_Init()
 	{
 		memset(&(Channels[x]), 0, sizeof(CH));
 		Channels[x].id = NULL;
+		Channels[x].sender = NULL;
+		Channels[x].receivers.head = NULL;
+		Channels[x].receivers.tail = NULL;
+		Channels[x].val = 0;
 	}
 	
 
@@ -351,7 +355,6 @@ void OS_Start()
 		KernelActive = 1;
 		init_tick_timer();
 
-
 		Kernel_Main_Loop();   /* main loop of the Kernel*/
 	}
 }
@@ -373,15 +376,6 @@ PID Task_Create_RR(void(*f)(void), int arg) {
 };
 
 PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK offset) {
-	
-	// new_task_args.period = period;
-	// new_task_args.wcet = wcet;
-	// new_task_args.ticks_remaining = wcet;
-	// new_task_args.next_start = offset;
-
-	// Task_Create(f, arg, PERIODIC);
-
-
 	new_task_args.code = f;
 	new_task_args.arg = arg;
 	new_task_args.level = PERIODIC;
@@ -393,13 +387,6 @@ PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK off
 	if (KernelActive) 
 	{
 		Disable_Interrupt();
-		// int i = 0;
-		// for( i = 0 ; i < new_task_args.next_start; i++){
-		// 	enable_LED(LED_PING);
-		// 	_delay_ms(1);
-		// 	disable_LEDs();
-		// }
-		
 		Cp->request = CREATE;
 		Enter_Kernel();
 	}
@@ -429,7 +416,6 @@ void Task_Create(voidfuncptr f, int arg, uint8_t level)
 		new_task_args.arg = arg;
 		new_task_args.level = (uint8_t)level;
 
-
 		Cp->request = CREATE;
 		Enter_Kernel();
 	}
@@ -439,7 +425,6 @@ void Task_Create(voidfuncptr f, int arg, uint8_t level)
 		new_task_args.arg = arg;
 		new_task_args.level = (uint8_t)level;
 		Cp->request = NONE;
-
 
 		Kernel_Create_Task();
 	}
@@ -466,6 +451,7 @@ void Task_Terminate()
 	if (KernelActive) 
 	{
 		Disable_Interrupt();
+		Tasks--;
 		Cp->request = TERMINATE;
 		Enter_Kernel();
 
@@ -562,7 +548,7 @@ CHAN Chan_Init()
 
 static void Kernel_Send()
 {
-	CH* channel_ptr = &Channels[channel_buffer.id];
+	CH* channel_ptr = &(Channels[channel_buffer.id]);
 	// if no receivers waiting then add Cp as sender and block
 	if (channel_ptr->receivers.head == NULL)
 	{
@@ -573,6 +559,7 @@ static void Kernel_Send()
 		}
 		channel_ptr->sender = Cp;
 		Cp->state = WAITING;
+		Cp->request = NONE;
 		channel_ptr->val = channel_buffer.val;
 		Kernel_Dispatch();
 	}
@@ -584,11 +571,12 @@ static void Kernel_Send()
 		{
 			recv_process->state = READY;
 			recv_process->retval = channel_buffer.val;
-
+			recv_process->request = NONE;	
+			recv_process->next = NULL;
 			// enqueue revc process back into its respective queue
 			EnqueueTaskToStateQueue(recv_process);
 
-			recv_process = Dequeue(&channel_ptr->receivers);
+			recv_process = Dequeue(&(channel_ptr->receivers));
 		}
 		channel_ptr->receivers.head = NULL;
 		channel_ptr->sender = NULL;
@@ -610,12 +598,14 @@ void Send(CHAN ch, int v)
 
 static void Kernel_Recv()
 {
-	CH* channel_ptr = &Channels[channel_buffer.id];
+	CH* channel_ptr = &(Channels[channel_buffer.id]);
 	// if there is no sender then add to wait queue and block
 	if (channel_ptr->sender == NULL)
 	{
 		Cp->state = WAITING;
-		Enqueue(&channel_ptr->receivers, Cp);
+		Cp->next = NULL;
+		Cp->request = NONE;
+		Enqueue(&(channel_ptr->receivers), Cp);
 		Kernel_Dispatch();
 	}
 	else 
@@ -623,10 +613,13 @@ static void Kernel_Recv()
 		// there is a sender then grab the value and set sender state back to ready
 		Cp->retval = channel_ptr->val;
 		channel_ptr->sender->state = READY;
+		channel_ptr->sender->request = NONE;
+		Cp->request = NONE;
 
 		// enqueue sender back into its task queue
 		EnqueueTaskToStateQueue(channel_ptr->sender);
 
+		channel_ptr->receivers.head = NULL;
 		channel_ptr->sender = NULL;
 	}
 	
@@ -641,7 +634,6 @@ int Recv(CHAN ch)
 		channel_buffer.id = ch;
 		channel_buffer.val = 0;
 		Enter_Kernel();
-		led_toggle(LED_ON_BOARD);
 	}
 
 	return Cp->retval;
