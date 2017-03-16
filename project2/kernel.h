@@ -92,6 +92,14 @@ typedef enum kernel_request_type
 	WRITE
 } KERNEL_REQUEST_TYPE;
 
+typedef enum error_code_type
+{
+	PERIODIC_TASK_EXCEEDS_WCET = 0,
+	PERIODIC_TASK_TIMING_CONFLICT,
+	SENDER_CONFLICT,
+	MAX_THREADS_REACHED,
+	MAX_CHANNELS_CREATED
+} ERROR_CODE_TYPE;
 
 
 typedef struct process_struct PD;
@@ -156,9 +164,6 @@ volatile unsigned char *KernelSp;
  * it into the appropriate process descriptor.
  */
 volatile unsigned char *CurrentSp;
-
-/** index to next task to run */
-volatile static unsigned int NextP;  
 
 /** 1 if kernel has been started; 0 otherwise. */
 volatile static unsigned int KernelActive;  

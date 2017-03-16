@@ -135,7 +135,11 @@ void Kernel_Create_Task_At(PD* p)
 static void Kernel_Create_Task()
 {
 	int x;
-	if (Tasks == MAXTHREAD) return;  /* Too many task! */
+	if (Tasks == MAXTHREAD) 
+	{
+		OS_Abort(MAX_THREADS_REACHED);
+		return;  /* Too many task! */
+	}
 	 /* find a DEAD PD that we can use  */
 
 	for (x = 0; x < MAXTHREAD; x++) 
@@ -160,9 +164,13 @@ static void Kernel_Dispatch()
 		{
 			Cp = Dequeue(&system_queue);
 		}
-		//else if(periodic_queue.head != NULL && num_ticks >= periodic_queue.head-> next_start )
 		else if(periodic_queue.head != NULL && (int)(num_ticks - periodic_queue.head->next_start) >= 0)
-		{	
+		{
+			// Timing conflict with another periodic task
+			if (periodic_queue.head->next != NULL && (int)(num_ticks - periodic_queue.head->next->next_start) >= 0)
+			{
+				OS_Abort(PERIODIC_TASK_TIMING_CONFLICT);
+			}	
 			Cp = periodic_queue.head;						
 		}
 		else if (rr_queue.head != NULL)
@@ -230,10 +238,10 @@ static void Kernel_Handle_Request(void)
 			case PERIODIC: // drop down
 				Cp->state = READY;
 				Cp->ticks_remaining--;
-				// if (Cp->ticks_remaining <= 0) {
-				// 	errno = ERRNO_PERIODIC_TASK_EXCEEDS_WCET;
-				// 	OS_Abort();
-				// }
+				if (Cp->ticks_remaining <= 0) {
+					//errno = ERRNO_PERIODIC_TASK_EXCEEDS_WCET;
+					OS_Abort(PERIODIC_TASK_EXCEEDS_WCET);
+				}
 				break;
 			case RR:
 				Cp->state = READY;
@@ -314,7 +322,6 @@ void OS_Init()
 	int x;
 	Tasks = 0;
 	KernelActive = 0;
-	NextP = 0;
 	//Reminder: Clear the memory for the task on creation.
 	//Init Kernel data structures
 	for (x = 0; x < MAXTHREAD; x++) 
@@ -332,12 +339,11 @@ void OS_Init()
 		Channels[x].val = 0;
 	}
 	
-
+	// initialize starting state to ready so that dispatch can be run..
 	Cp->state = READY;
 	// create idle process
 	Task_Create_Idle(Idle, 2);
 	Task_Create_System(a_main, 1);
-
 }
 
 
@@ -357,6 +363,64 @@ void OS_Start()
 	}
 }
 
+void OS_Abort(unsigned int error)
+{
+	int i = 0;
+	switch (error)
+	{
+		case PERIODIC_TASK_EXCEEDS_WCET:
+			// blink 5 times really fast
+			for (i = 0; i < 6; i++)
+			{
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(50);
+			}
+			break;
+		case PERIODIC_TASK_TIMING_CONFLICT:
+			// blink on and off 3 times with a period of 1 second
+			for (i = 0; i <= 6; i++)
+			{
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(1000);
+			}
+			break;
+		case SENDER_CONFLICT:
+			// blink 5 times with a period of ~500 ms
+			for (i = 0; i < 6; i++)
+			{
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(10);
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(500);
+			}
+			break;
+		case MAX_THREADS_REACHED:
+			// blink on->off->on in short bursts 5 times
+			for (i = 0; i < 6; i++)
+			{
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(50);
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(50);
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(200);
+			}
+			break;
+		case MAX_CHANNELS_CREATED:
+			// blink on and off 5 times with a period of 1 second
+			for (i = 0; i < 6; i++)
+			{
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(50);
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(1000);
+			}
+
+			break;
+		default:
+			break;
+	}
+}
 
 /*
  * Task management.
@@ -506,8 +570,11 @@ static CHAN Kernel_Chan_Init()
 	}
 
 	// No empty channels..
-	if (x == MAXCHAN) return NULL;
-
+	if (x == MAXCHAN) 
+	{
+		OS_Abort(MAX_CHANNELS_CREATED);	
+		return NULL;
+	}
 	return Channels[x].id;
 }
 
@@ -554,6 +621,7 @@ static void Kernel_Send()
 		if (channel_ptr->sender != NULL)
 		{
 			// ABORT!!
+			OS_Abort(SENDER_CONFLICT);
 		}
 		channel_ptr->sender = Cp;
 		Cp->state = WAITING;
