@@ -430,6 +430,7 @@ void OS_Abort(unsigned int error)
 			break;
 	}
 
+	// remove on project 3...
 	exit(1);
 
 }
