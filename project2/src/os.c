@@ -429,6 +429,9 @@ void OS_Abort(unsigned int error)
 		default:
 			break;
 	}
+
+	exit(1);
+
 }
 
 /*
