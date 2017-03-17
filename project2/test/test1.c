@@ -53,6 +53,7 @@ void Task_S1()
 	int val = Recv(c1);
 	if(val == 0) {
 		DEBUG_ON(1);
+		Task_Next();
 		for(;;);
 	}
 }
@@ -62,6 +63,7 @@ void Task_S2()
 	int val = Recv(c1);
 	if(val == 0) {
 		DEBUG_ON(2);
+		Task_Next();
 		for(;;);
 	}	
 }
@@ -95,4 +97,5 @@ void a_main()
 	c1 = Chan_Init();
 	Task_Next();
 	Write(c1, 0);
+	// Send(c1,0);
 }
