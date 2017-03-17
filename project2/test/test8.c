@@ -1,9 +1,9 @@
 /**
- * @file   test001.c
- * @author Scott Craig and Justin Tanner
- * @date   Mon Oct 29 16:19:32 2007
+ * @file   test8.c
+ * @author 
+ * @date   
  *
- * @brief  Test 001 - sanity test, can we print to UART
+ * @brief  Test 8 - Testing the order of the round robin tasks
  *
  */
 

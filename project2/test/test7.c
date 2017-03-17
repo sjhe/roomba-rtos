@@ -1,7 +1,7 @@
 /*
- * Tests a waiting RR level process signaled by a PERIODIC task.
+ * Test for multiple receivers that are receiving from the same channel
  *
- * PERIODIC task should NOT be preempted by the waking RR task.
+ * 
  */
 
 #include "../trace/trace.h"
@@ -14,7 +14,7 @@
 CHAN * print_channel;
 CHAN * test_channel;
 
-void test_signal() {
+void test_Send() {
 	int arg = Task_GetArg();
 	for (;;) {
 		add_trace(arg, ENTER);
@@ -24,44 +24,51 @@ void test_signal() {
 	}
 }
 
-void test_waiting() {
+void test_Recv() {
 	int arg = Task_GetArg();
 	int value = NULL;
 	for (;;) {
 		add_trace(arg, ENTER);
 		value = Recv(test_channel);
-		// _delay_ms(10);
 		add_trace(arg, EXIT);
-
-		Send(print_channel,value);
+		if(arg == 3 ){
+			Send(print_channel,value);	
+		}
 		Task_Next();
 	}
 }
 
+void err_handler() {
+	UART_print("fail");
+}
 
 void test_results() {
 	int value = Recv(print_channel);
 	if(value > 0){
 		char * trace = get_trace();
-		char * correct_trace = "(0,0),(1,1),";
+		// char * correct_trace = "(0,0),(1,1),";
 		UART_print("Trace: %s\n", trace);
-		if (strcmp(correct_trace, trace) == 0) {
-			UART_print("pass");
-		} else {
-			UART_print("fail");
-		}
+		// if (strcmp(correct_trace, trace) == 0) {
+		// 	UART_print("pass");
+		// } else {
+		// 	UART_print("fail");
+		// }
 	}
 }
 
 void a_main() {
 	UART_Init0(38400);
-
+	// set_error_handler(err_handler);
 	print_channel = Chan_Init();
 	test_channel  = Chan_Init();
 	Task_Create_System(test_results, 0);
 
 	UART_print("\ntest begin\n");
 
-	Task_Create_System(test_signal, 1);
-	Task_Create_RR(test_waiting, 2);
+	Task_Create_RR(test_Recv, 1);
+	Task_Create_RR(test_Recv, 2);
+	Task_Create_RR(test_Recv, 3);
+
+	Task_Create_RR(test_Send, 4);
+
 }
