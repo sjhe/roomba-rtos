@@ -20,6 +20,8 @@ void test_periodic() {
 }
 
 void a_main() {
+	init_LED_ON_BOARD();
+
 	// periodic task with 100ms period and 10ms wcet
 	Task_Create_Period(test_periodic, 0, 10, 1, 0);
 }

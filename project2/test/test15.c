@@ -18,6 +18,7 @@ void test_periodic() {
 }
 
 void a_main() {
+	init_LED_ON_BOARD();
 	// wcet greater than period..
 	Task_Create_Period(test_periodic, 0, 10, 11, 0);
 }

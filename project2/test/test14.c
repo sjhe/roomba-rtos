@@ -19,6 +19,7 @@ void test_periodic() {
 }
 
 void a_main() {
+	init_LED_ON_BOARD();
 	Task_Create_Period(test_periodic, 0, 10, 1, 0);
 	Task_Create_Period(test_periodic, 0, 20, 1, 10);
 }
