@@ -385,6 +385,14 @@ void OS_Abort(unsigned int error)
 				_delay_ms(1000);
 			}
 			break;
+		case PERIODIC_TASK_WCET_GREATER_PERIOD:
+			// blink fast with 100 ms delay
+			for (i = 0; i <= 6; i++)
+			{
+				led_toggle(LED_ON_BOARD);
+				_delay_ms(100);
+			}
+			break;
 		case SENDER_CONFLICT:
 			// blink 5 times with a period of ~500 ms
 			for (i = 0; i < 6; i++)
@@ -446,6 +454,11 @@ PID Task_Create_Period(void(*f)(void), int arg, TICK period, TICK wcet, TICK off
 	new_task_args.wcet = wcet;
 	new_task_args.ticks_remaining = wcet;
 	new_task_args.next_start = offset;
+
+	if (wcet > period)
+	{
+		OS_Abort(PERIODIC_TASK_WCET_GREATER_PERIOD);
+	}
 
 	if (KernelActive) 
 	{
