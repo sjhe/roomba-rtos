@@ -1,6 +1,8 @@
 /*
- * Tests that the RTOS correctly schedules system tasks.
- */
+Test Case: This test case checks the fairness of the system by create eight of the same priority tasks. These tasks should be schedule in order if the system has fairness.
+Code: test10.c 
+Trace: (0,0),(1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),
+*/
 
 #include "../trace/trace.h"
 

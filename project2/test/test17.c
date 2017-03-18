@@ -32,7 +32,6 @@ void test_waiting() {
 		add_trace(arg, ENTER);
 		value = Recv(test_channel);
 		if(value > 0){
-			_delay_ms(10);
 			add_trace(arg, EXIT);
 			Task_Next();
 		}
@@ -44,7 +43,7 @@ void test_results() {
 	int value = Recv(print_channel);
 	if(value > 0){
 		char * trace = get_trace();
-		char * correct_trace = "(0,(1,0),0,1";
+		char * correct_trace = "(0,(1,1),0),(1,";
 		UART_print("Trace: %s\n", trace);
 		if (strcmp(correct_trace, trace) == 0) {
 			UART_print("pass");
@@ -64,5 +63,5 @@ void a_main() {
 	UART_print("\ntest begin\n");
 
 	Task_Create_System(test_signal, 0);
-	Task_Create_RR(test_waiting, 1);
+	Task_Create_System(test_waiting, 1);
 }

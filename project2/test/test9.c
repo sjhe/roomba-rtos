@@ -1,9 +1,10 @@
-/*
- * 	Test Case : Test the priority of the tasks. System Tasks will preempt
- *	a Round robin task
- * 
- */
-
+/* Test Case: This is a simple test that checks the system abort functionality when the periodic task exceeds the wcet. 
+*  Code: test13.c
+*  Description: In this test case there is one periodic task with a wcet of 10 ms. 
+*  The task itself is a simple function that calls _delay_ms(20)
+*  which will delay the function by 20 ms before calling Task_Next().
+*  Running this test causing the PERIODIC_TASK_EXCEEDS_WCET error code to be generated.
+*/
 #include "../trace/trace.h"
 
 #include <util/delay.h>
