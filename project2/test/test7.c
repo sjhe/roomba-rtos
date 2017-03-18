@@ -46,19 +46,19 @@ void test_results() {
 	int value = Recv(print_channel);
 	if(value > 0){
 		char * trace = get_trace();
-		// char * correct_trace = "(0,0),(1,1),";
+		char * correct_trace = "(1,(2,(3,(4,4),1),2),3),";
 		UART_print("Trace: %s\n", trace);
-		// if (strcmp(correct_trace, trace) == 0) {
-		// 	UART_print("pass");
-		// } else {
-		// 	UART_print("fail");
-		// }
+		if (strcmp(correct_trace, trace) == 0) {
+			UART_print("pass");
+		} else {
+			UART_print("fail");
+		}
 	}
 }
 
 void a_main() {
 	UART_Init0(38400);
-	// set_error_handler(err_handler);
+
 	print_channel = Chan_Init();
 	test_channel  = Chan_Init();
 	Task_Create_System(test_results, 0);

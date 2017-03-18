@@ -34,7 +34,7 @@ extern void Enter_Kernel();
 static void Kernel_Create_Task(void);
 void Task_Terminate();
 void Task_Create(voidfuncptr f, int arg, uint8_t level);
-static void EnqueueTaskToStateQueue(PD* process);
+static void EnqueueTaskToStateQueue(PD* process, int enqueueFront);
 
 /*ISR Management*/
 static void init_tick_timer();
@@ -596,17 +596,26 @@ static CHAN Kernel_Chan_Init()
 	return Channels[x].id;
 }
 
-static void EnqueueTaskToStateQueue(PD* process)
+
+static void EnqueueTaskToStateQueue(PD* process, int enqueueFront)
 {
 	switch (process->level)
 	{
 	case SYSTEM:
 		process->state = READY;
-		Enqueue(&system_queue, process);
+		if(enqueueFront == 1){
+			EnqueueFront(&system_queue, process);
+		}else{
+			Enqueue(&system_queue, process);	
+		}
 		break;
 	case RR:
 		process->state = READY;
-		Enqueue(&rr_queue, process);
+		if(enqueueFront  == 1){
+			EnqueueFront(&rr_queue, process);
+		}else{
+			Enqueue(&rr_queue, process);
+		}
 		break;
 	default:
 		break;
@@ -656,12 +665,16 @@ static void Kernel_Send()
 			recv_process->retval = channel_buffer.val;
 
 			// enqueue revc process back into its respective queue
-			EnqueueTaskToStateQueue(recv_process);
+			EnqueueTaskToStateQueue(recv_process, 0);
 
 			recv_process = Dequeue(&(channel_ptr->receivers));
 		}
 		channel_ptr->receivers.head = NULL;
 		channel_ptr->sender = NULL;
+
+		// enqueue current process back to the front of the queue
+		EnqueueTaskToStateQueue(Cp, 1);
+		Kernel_Dispatch();
 	}
 
 }
@@ -696,10 +709,15 @@ static void Kernel_Recv()
 		channel_ptr->sender->state = READY;
 	
 		// enqueue sender back into its task queue
-		EnqueueTaskToStateQueue(channel_ptr->sender);
+		EnqueueTaskToStateQueue(channel_ptr->sender, 0);
 
 		channel_ptr->receivers.head = NULL;
 		channel_ptr->sender = NULL;
+
+		// enqueue current process back to the front of the queue
+		EnqueueTaskToStateQueue(Cp, 1);
+		Kernel_Dispatch();
+
 	}
 }
 
@@ -730,12 +748,16 @@ static void Kernel_Write()
 			recv_process->retval = channel_buffer.val;
 
 			// enqueue revc process back into its respective queue
-			EnqueueTaskToStateQueue(recv_process);
+			EnqueueTaskToStateQueue(recv_process,0);
 
 			recv_process = Dequeue(&(channel_ptr->receivers));
 		}
 		channel_ptr->receivers.head = NULL;
 		channel_ptr->sender = NULL;
+
+		// enqueue current process back to the front of the queue
+		EnqueueTaskToStateQueue(Cp, 1);
+		Kernel_Dispatch();
 	}
 }
 

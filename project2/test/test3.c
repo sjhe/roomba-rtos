@@ -7,9 +7,6 @@
 // S1 block on Recv		Recv       block on Send	 Send
 // P1												 Recv@ms=150	Task_Next.......
 // RR1																Delay.......................
-CHAN c1=0;
-
-
 
 void DEBUG_INIT()
 {

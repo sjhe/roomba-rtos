@@ -212,6 +212,21 @@ static void Enqueue(queue_t* queue_ptr, PD* p)
 	}
 }
 
+static void EnqueueFront(queue_t* queue_ptr, PD* p){
+	if (queue_ptr->head == NULL)
+	{
+		queue_ptr->head = p;
+		queue_ptr->tail = p;
+		p->next = NULL;
+	}
+	else{
+		PD* cp_curr = queue_ptr->head;
+		p->next = cp_curr;
+		queue_ptr->head = p;
+	}
+}
+
+
 /**
 * @brief Add a task based on its next start time
 *

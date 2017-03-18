@@ -59,7 +59,7 @@ int a_main(void)
     if(channel_id == 1){
         UART_Init0(38400);
         UART_print("\r\nSTART\r\n");
-        Task_Create_System(test_results, 0);
+        Task_Create_RR(test_results, 0);
         Task_Create_RR(round_robin , 1);
         Task_Create_RR(round_robin , 2);
         Task_Create_RR(round_robin , 3);
