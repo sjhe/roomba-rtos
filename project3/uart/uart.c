@@ -38,8 +38,7 @@ void UART_Transmit0(unsigned char data) {
 
 unsigned char UART_Receive0() {
     // Busy wait for data to be received
-    while (!(UCSR0A & _BV(RXC0)))
-        ;
+    while (!(UCSR0A & _BV(RXC0)));
     // Get and return received data from buffer
     return UDR0 ;
 }
@@ -112,17 +111,20 @@ void Roomba_Send_String(char *string_out){
 }
 
 void Bluetooth_UART_Init(){   
-    // Set baud rate to 19.2k
-    UBRR1 = 208;
+    // Set baud rate to 9600
+    UBRR1 = 207;
     
-    // Enable receiver, transmitter
-    UCSR1B = (1<<RXEN1) | (1<<TXEN1);
+    // Enable transmitter, receiver, enable interrupt
+    // UCSR1B = (1<<RXEN1) | (1<<TXEN1);
+
+    // Enable transmitter, receiver, enable interrupt
+    UCSR1B = (1<<TXEN1) | (1 << RXEN1) ; //| ( 1 << RXCIE1);
 
     // 8-bit data
     UCSR1C = ((1<<UCSZ11)|(1<<UCSZ10));
 
     // disable 2x speed
-    UCSR1A &= ~(1<<U2X1);
+    // UCSR1A &= ~(1<<U2X1);
 }
 
 void Bluetooth_Send_Byte(uint8_t data_out){      
@@ -142,6 +144,7 @@ unsigned char Bluetooth_Receive_Byte(){
 void Bluetooth_Send_String(char *string_out){
     for(; *string_out; string_out++){
         _delay_ms(10);
+        Bluetooth_Send_Byte(*string_out >> 8);
         Bluetooth_Send_Byte(*string_out);
     }
 }
@@ -157,24 +160,17 @@ void uart_reset_receive(void)
     uart_buffer_index = 0;
 }
 
-// uint8_t UART_recv() {
-//  // check the status register until the RC1 flag is cleared
-//  while( !(UCSR1A & ( 1 << RXC1)));
-//  // retrieve the value from the data register
-//  return UDR1;
+// // /**
+// //  * UART receive byte ISR
+// //  */
+// ISR(USART1_RX_vect)
+// {
+//     // FEn - frame error
+//     // DORn - data overrun
+//     // UPEn - uart pairty error
+//     uart_buffer[uart_buffer_index] = UDR1;
+//     uart_buffer_index = (uart_buffer_index + 1) % UART_BUFFER_SIZE;
 // }
-
-/**
- * UART receive byte ISR
- */
-ISR(USART1_RX_vect)
-{
-    // FEn - frame error
-    // DORn - data overrun
-    // UPEn - uart pairty error
-    uart_buffer[uart_buffer_index] = UDR1;
-    uart_buffer_index = (uart_buffer_index + 1) % UART_BUFFER_SIZE;
-}
 
 uint8_t uart_get_byte(int index)
 {

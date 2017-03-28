@@ -487,21 +487,11 @@ void Bluetooth_Send() {
 
 // ------------------------------ BLUETOOTH RECIEVE ------------------------------ //
 void Bluetooth_Receive() {
-	uint8_t flag;
-	char data;
-	uint8_t laser_data;
-	uint16_t servo_data;
-	uint8_t servo_data1;
-	uint8_t servo_data2;
-	char roomba_data;
-	char string[100];
-
 	for(;;){
 		if(( UCSR1A & (1<<RXC1))) {
-			data = Bluetooth_Receive_Byte();
-			// strcat(string, data); /* add the extension */
-			UART_print(data);
-			UART_print("S\n");
+			uint8_t byte = Bluetooth_Receive_Byte();
+			// _delay_ms(8);
+			UART_print("%d\n", byte);	
 		}
 		Task_Next();
 	}
@@ -511,31 +501,31 @@ void Bluetooth_Receive() {
 // Creates the required tasks and then terminates
 void a_main() {
 
-	// Initialize Ports
-	DDRL |= _BV(DDL6);
-	DDRL |= _BV(DDL2);
-	DDRL |= _BV(DDL5);
-	DDRH |= _BV(DDH3);
+	// // Initialize Ports
+	// DDRL |= _BV(DDL6);
+	// DDRL |= _BV(DDL2);
+	// DDRL |= _BV(DDL5);
+	// DDRH |= _BV(DDH3);
 
-	// Initialize Queues
-	laserFront = 0;
-	laserRear = 0;
-	servoFront = 0;
-	servoRear = 0;
-	roombaFront = 0;
-	roombaRear = 0;
+	// // Initialize Queues
+	// laserFront = 0;
+	// laserRear = 0;
+	// servoFront = 0;
+	// servoRear = 0;
+	// roombaFront = 0;
+	// roombaRear = 0;
 
 	// Initialize Blocking Channels
-	laserChannel  = Chan_Init();
-	servoChannel  = Chan_Init();
-	sensorChannel = Chan_Init();
+	// laserChannel  = Chan_Init();
+	// servoChannel  = Chan_Init();
+	// sensorChannel = Chan_Init();
 
 
-	laserState = ON;
+	// laserState = ON;
 	// Initialize Bluetooth and Roomba UART
 	Bluetooth_UART_Init();
 	// Roomba_UART_Init();
-	ADC_init();
+	// ADC_init();
 	// Servo_Init();
 	// Roomba_Init();
 
@@ -550,7 +540,7 @@ void a_main() {
 	// bumpState = 0;
 	// roombaState = 'X';
 	// AUTO = 0;
-	UART_Init0(19200);
+	UART_Init0(9200);
 	// Create Tasks
 	// IdlePID 					      = Task_Create_Idle(Idle , 1);
 	BluetoothReceivePID  = Task_Create_System(Bluetooth_Receive, 1);
@@ -558,8 +548,8 @@ void a_main() {
 
 
 	// LaserTaskPID 		  = Task_Create_System(System_Bluetooth_Receive, 2);
-	init_PL5();
-	LaserTaskPID 		     = Task_Create_Period(Laser_Task, 2, 20, 0, 0 );
+	// init_PL5();
+	// LaserTaskPID 		     = Task_Create_Period(Laser_Task, 2, 20, 0, 0 );
 	// LightSensorTaskPID 			= Task_Create(LightSensor_Task, 2, 3);
 	// ServoTaskPID 				= Task_Create(Servo_Task, 2, 3); // Periodic
 	// RoombaTaskPID 				= Task_Create(Roomba_Task, 2, 2); // Periodic
