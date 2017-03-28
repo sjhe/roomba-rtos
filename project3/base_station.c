@@ -109,6 +109,8 @@ void readJoystickInputTask()
 //		UART_print("%d, %d | %d, %d | %d\n", joystick_sx, joystick_sy, joystick_rx, joystick_ry, joystick_button);
 		UART_print("vsdada\n");
 
+		Bluetooth_Send_Byte(4);
+
 		if (joystick_button == 0)
 		{
 			enable_LED(LED_PING);	
@@ -127,7 +129,8 @@ void readJoystickInputTask()
 void a_main()
 {
 //	init_pins();
-    UART_Init0(9600);
+	Bluetooth_UART_Init(); 
+	UART_Init0(9600);
     UART_print("\r\nSTART\r\n");
 
 	setup_controllers();
