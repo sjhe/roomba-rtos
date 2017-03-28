@@ -44,9 +44,9 @@ const int maxStepAngle = 5;   // init max step angle
 
 void setup() {
   Serial.begin(9600);
-  Serial1.begin(9600);
-  Serial1.print("Starting init");
-  r.init();
+  Serial1.begin(19200);
+  Serial.print("Starting init");
+//  r.init();
   pinMode(LASER_PIN, OUTPUT);
   pinMode(TEST_PIN, OUTPUT);
   pinMode(TEST_PIN_2, OUTPUT);
@@ -146,6 +146,24 @@ void laserState(char* inputValue)
     digitalWrite(LASER_PIN, LOW);
   }
 }
+char *convert(uint8_t *a)
+{
+  char* buffer2;
+  int i;
+
+  buffer2 = malloc(9);
+  if (!buffer2)
+    return NULL;
+
+  buffer2[8] = 0;
+  for (i = 0; i <= 7; i++)
+    buffer2[7 - i] = (((*a) >> i) & (0x01)) + '0';
+
+  puts(buffer2);
+
+  return buffer2;
+}
+
 
 //ReceiveInputTask 
 void ReceiveInputTask() {
@@ -153,23 +171,28 @@ void ReceiveInputTask() {
 
   while(Serial1.available()) {
     //Make sure the Roomba is ready to go.
-    char command = Serial1.read();
-    
-    if (command != '*')
-    {
-      *inputBuffer = command;
-      strcat(btInput, inputBuffer);
-    } 
-    else
-    { 
-      //execute bt input
-      Serial.println(btInput);
-//      digitalWrite(TEST_PIN, HIGH);
-      parseInputStringAndUpdate();
-      laserState(joystickButton);
-//      digitalWrite(TEST_PIN, LOW);
-      btInput[0] = '\0';
-    }
+    uint8_t command = Serial1.read();
+//    char *final_string;
+//    final_string = convert(&command);
+    Serial.println(command);
+
+//    free(final_string);
+//    q
+//    if (command != '*')
+//    {
+//      *inputBuffer = command;
+//      strcat(btInput, inputBuffer);
+//    } 
+//    else
+//    { 
+//      //execute bt input
+//      Serial.println(btInput);
+////      digitalWrite(TEST_PIN, HIGH);
+//      parseInputStringAndUpdate();
+//      laserState(joystickButton);
+////      digitalWrite(TEST_PIN, LOW);
+//      btInput[0] = '\0';
+//    }
   }
   digitalWrite(TEST_PIN, LOW);
 }
