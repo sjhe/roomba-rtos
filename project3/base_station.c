@@ -2,6 +2,8 @@
 #include "src/led_test.h"
 #include <avr/io.h>
 #include "uart/uart.h"
+#include <string.h>
+#include <stdio.h>
 
 #define JOYSTICK_S_X_PIN 0		// analog 0
 #define JOYSTICK_S_Y_PIN 1		// analog 1
@@ -97,7 +99,19 @@ int readAnalog(unsigned int pin_mask)
 
 void createRoombaCommand(char* dest, char* inputCommand, int rx, int ry)
 {
+		strcat(dest, inputCommand);
 
+		char speedBuffer[4] = "";
+		strcat(dest, ",");
+		sprintf(speedBuffer, "%d", rx);
+		strcat(dest, speedBuffer);
+
+		speedBuffer[0] = '\0';
+		strcat(dest, ",");
+		sprintf(speedBuffer, "%d", ry);
+		strcat(dest, speedBuffer);
+
+		strcat(dest, "*");  
 }
 
 void roombaTask()
@@ -144,7 +158,6 @@ void createServoCommand(char* dest, char* inputCommand, int sx, int sy, int lase
 		strcat(dest, speedBuffer);
 
 		strcat(dest, "*");  
-
 }
 
 void servoTask()
