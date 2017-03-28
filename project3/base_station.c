@@ -84,7 +84,7 @@ void test_periodic(){
 
 void test_ping(){
 	for(;;){
-//		led_toggle(LED_PING);
+		led_toggle(LED_PING);
 		Task_Next();
 	}
 }
@@ -95,32 +95,78 @@ int readAnalog(unsigned int pin_mask)
 	return 0;
 }
 
-void readJoystickInputTask()
+void createRoombaCommand(char* dest, char* inputCommand, int rx, int ry)
 {
+
+}
+
+void roombaTask()
+{
+	char bt_command[16] = "";
+	char bt_last_command[16] = "";
+	for(;;){
+		int joystick_rx = read_analog(JOYSTICK_R_X_PIN);
+		int joystick_ry = read_analog(JOYSTICK_R_Y_PIN);
+		
+		bt_command[0] = '\0';
+		createRoombaCommand(bt_command, "r", joystick_rx, joystick_ry);
+
+		if (strcmp(bt_last_command, bt_command) != 0)
+		{
+			UART_print("%s\n", bt_command);
+			Bluetooth_Send_String(bt_command);
+		}
+		
+		strcpy(bt_last_command, bt_command);
+
+		led_toggle(LED_PING);
+		Task_Next();
+	}
+}
+
+void createServoCommand(char* dest, char* inputCommand, int sx, int sy, int laserState)
+{
+		strcat(dest, inputCommand);
+
+		char speedBuffer[4] = "";
+		strcat(dest, ",");
+		sprintf(speedBuffer, "%d", sx);
+		strcat(dest, speedBuffer);
+
+		speedBuffer[0] = '\0';
+		strcat(dest, ",");
+		sprintf(speedBuffer, "%d", sy);
+		strcat(dest, speedBuffer);
+	
+		speedBuffer[0] = '\0';
+		strcat(dest, ",");
+		sprintf(speedBuffer, "%d", laserState);
+		strcat(dest, speedBuffer);
+
+		strcat(dest, "*");  
+
+}
+
+void servoTask()
+{
+	char bt_command[16] = "";
+	char bt_last_command[16] = "";
 	for (;;)
 	{
 		int joystick_sx = read_analog(JOYSTICK_S_X_PIN);
 		int joystick_sy = read_analog(JOYSTICK_S_Y_PIN);
-		int joystick_button = read_analog(JOYSTICK_S_BUTTON_PIN);
-		
-		int joystick_rx = read_analog(JOYSTICK_R_X_PIN);
-		int joystick_ry = read_analog(JOYSTICK_R_Y_PIN);
-		
-//		UART_print("%d, %d | %d, %d | %d\n", joystick_sx, joystick_sy, joystick_rx, joystick_ry, joystick_button);
-		UART_print("vsdada\n");
+		int joystick_button = read_analog(JOYSTICK_S_BUTTON_PIN) > 0 ? 1 : 0;
 
-		Bluetooth_Send_Byte(4);
+		bt_command[0] = '\0';
+		createServoCommand(bt_command, "s", joystick_sx, joystick_sy, joystick_button);
 
-		if (joystick_button == 0)
+		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-			enable_LED(LED_PING);	
+			UART_print("%s\n", bt_command);
+			Bluetooth_Send_String(bt_command);
 		}
-		else
-		{
-			PORTB &= ~(_BV(LED_PING));
-		}
-
-//		Send(ch, joystick_x);
+		
+		strcpy(bt_last_command, bt_command);
 
 		Task_Next();
 	}
@@ -137,8 +183,9 @@ void a_main()
 	init_LED_ON_BOARD();
 	init_LED_PING();
 
-	Task_Create_Period(readJoystickInputTask, 0, 50, 1, 2);
-	Task_Create_Period(test_periodic, 0, 100, 1, 0);
-	Task_Create_Period(test_ping, 0, 10, 1, 5);
+	Task_Create_Period(servoTask, 0, 15, 8, 0);
+//	Task_Create_Period(test_periodic, 0, 15, 4, 0);
+//	Task_Create_Period(test_ping, 0, 15, 1, 5);
+	Task_Create_Period(roombaTask, 0, 15, 7, 8);
 
 }

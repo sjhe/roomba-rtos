@@ -113,7 +113,8 @@ void Roomba_Send_String(char *string_out){
 
 void Bluetooth_UART_Init(){   
     // Set baud rate to 19.2k
-    UBRR1 = 208;
+   // UBRR1 = 207;
+    UBRR1 = MYBRR(9600);
     
     // Enable receiver, transmitter
     UCSR1B = (1<<RXEN1) | (1<<TXEN1);
@@ -141,7 +142,7 @@ unsigned char Bluetooth_Receive_Byte(){
 
 void Bluetooth_Send_String(char *string_out){
     for(; *string_out; string_out++){
-        _delay_ms(10);
+        _delay_ms(3);
         Bluetooth_Send_Byte(*string_out);
     }
 }
