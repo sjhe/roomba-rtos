@@ -10,7 +10,7 @@
 #define JOYSTICK_R_X_PIN 2		// analog 2
 #define JOYSTICK_R_Y_PIN 3		// analog 3
 
-#define JOYSTICK_S_BUTTON_PIN 4
+#define JOYSTICK_S_BUTTON_PIN PC0
 #define JOYSTICK_R_BUTTON_PIN 5
 
 void setup_controllers()
@@ -75,6 +75,11 @@ int read_analog(uint8_t channel)
     while ((ADCSRA & (1 << ADSC)));
     /* We setup the ADC to shift input to left, so we simply return the High register. */
     return ADCH;
+}
+
+int read_digital_pinc(uint8_t channel)
+{
+	return PINC & (1 << channel);
 }
 
 void test_periodic(){
@@ -161,7 +166,7 @@ void servoTask()
 	{
 		int joystick_sx = read_analog(JOYSTICK_S_X_PIN);
 		int joystick_sy = read_analog(JOYSTICK_S_Y_PIN);
-		int joystick_button = read_analog(JOYSTICK_S_BUTTON_PIN) > 10 ? 1 : 0;
+		int joystick_button = read_digital_pinc(JOYSTICK_S_BUTTON_PIN);//read_analog(JOYSTICK_S_BUTTON_PIN);// > 10 ? 1 : 0;
 
 		command_values[0] = calculateJoystickVal(joystick_sx);
 		command_values[1] = -calculateJoystickVal(joystick_sy);

@@ -246,7 +246,8 @@ static void EnqueuePeriodic(queue_t* queue_ptr, PD* p)
 		PD* cp_curr = queue_ptr->head;
 		PD* cp_prev = NULL;
 
-		while (cp_curr != NULL && p->next_start > cp_curr->next_start)
+		//while (cp_curr != NULL && p->next_start > cp_curr->next_start)
+		while (cp_curr != NULL && (int)(p->next_start - cp_curr->next_start) > 0)
 		{
 			cp_prev = cp_curr;
 			cp_curr = cp_curr->next;
