@@ -119,6 +119,8 @@ void Bluetooth_UART_Init(){
     UBRR1H = ( BAUD_PRESCALE >> 8) ; // Load upper 8- bits of the baud rate value into the high byte of the UBRR register
     
     UBRR1L = BAUD_PRESCALE ; // Load lower 8 - bits of the baud rate value into the low byte of the UBRR register
+
+	UCSR1A &= ~(1<<U2X1);
 }
 
 void Bluetooth_Send_Byte(uint8_t data_out){      
@@ -137,8 +139,7 @@ unsigned char Bluetooth_Receive_Byte(){
 
 void Bluetooth_Send_String(char *string_out){
     for(; *string_out; string_out++){
-        _delay_ms(10);
-        Bluetooth_Send_Byte(*string_out >> 8);
+        _delay_ms(4);
         Bluetooth_Send_Byte(*string_out);
     }
 }
