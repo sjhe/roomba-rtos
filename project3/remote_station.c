@@ -454,6 +454,9 @@ struct servoState {
 void Bluetooth_Receive() {
 	int i;
 	char command[32];
+	int j = 0 ; 
+	memset(command, '\0' , 32);
+
 	for (;;) // Loop forever
 	{
 		// // unsigned char ReceivedByte ;
@@ -461,58 +464,61 @@ void Bluetooth_Receive() {
 
 		uint8_t receive_byte;
 
-		memset(command, '\0' , 32);
+		// memset(command, '\0' , 32);
+
 
 		for(i = 0; i < bytes_received; i++){
 			receive_byte = uart_get_byte(i);
-			command[i] = receive_byte;
+			command[j++] = receive_byte;
 			if(receive_byte == '*'){
 				// uint8_t first_byte = uart_get_byte(0);
-				command[i] = '\0';
+				command[j] = '\0';
 
 				int count = 0;
 				char* token = strtok(command, ",");
 
-				while( token != NULL ) 
-			  {
-			  	UART_print("%d\n", count);
-			  	UART_print("%s\n", token);
-			    token = strtok(NULL, ",");
-			    count++;
-			  } 
+				if( token[0] == 's' ){
+			  	UDR0 = 's';
+			  	while (token != NULL  )
+			  	{
+			  		if(count == 1 ){
+			  			servoBuffer.x = atoi(token);
+			  		}else if (count == 2){
+			  			servoBuffer.y = atoi(token);
+			  		}else if (count == 3){
+			  			servoBuffer.laserState = atoi(token);
+			  		}else {
+			  			// ignore
+			  		}
+			  		token = strtok(NULL, ",");
+			  		count++;
+			  	}
+			  	j = 0; 
+			  	memset(command, '\0' , 32);
+
+			  }else if (token[0] == 'r' ){
+			  	UDR0 = 'r';
+					j = 0;
+			  	memset(command, '\0' , 32);
+			  	 // while (token != NULL  ){
+
+			  	// 	token = strtok(NULL, ",");
+			  	// 	count++;
+			  	// }
+			  }else{
+			  	// UDR0 = 'i';
+			  	UART_print("%s\n",command);
+			  	//Ignore
+			  }
 			}
-				
-
-				// Write(servoChannel, 1);
-
-
-				// int x;
-				// int y;
-				// int laserState;
-				// if('s' == tmp){
-				// 	 UDR0 = 'G';
-				// 	 _delay_ms(1);
-				// 	 UDR0 = bytes_received;
-				// }
-    		// Put data into buffer, sends the data
-    		// UDR0 = '\n';
-	
-			// else{
-			// 	// UDR0 = receive_byte;
-			// 	// UART_print("%c ", receive_byte);
-			// }
 		}
-		// while (( UCSR1A & (1 << RXC1 )) == 0) {}; // Do nothing until data have been received and is
-		// ready to be read from UDR
-		// ReceivedByte = UDR1 ; // Fetch the received byte value into the variable " ByteReceived "
-		// uart_bytes_received
-		// UART_print("%c ", ReceivedByte);
-		// if(ReceivedByte == '*'){
-		// 	UART_print("\n");
-		// }
-		// while (( UCSRA & (1 << UDRE )) == 0) {}; // Do nothing until UDR is ready for more data to
-		// // be written to it
-		// UDR = ReceivedByte;
+
+		if(servoBuffer.laserState == 0){
+			enable_LED(LED_ON_BOARD);
+		}else{
+			disable_LEDs();
+		}
+
 		uart_reset_receive();
 		Task_Next();
 	}
