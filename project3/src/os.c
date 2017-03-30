@@ -431,7 +431,7 @@ void OS_Abort(unsigned int error)
 	}
 
 	// remove on project 3...
-	exit(1);
+//	exit(1);
 
 }
 

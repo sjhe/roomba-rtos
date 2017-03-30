@@ -204,8 +204,8 @@ void a_main()
 	init_LED_PING();
 
 
-	Task_Create_Period(servoTask, 0, 15, 8, 0);
-	Task_Create_Period(roombaTask, 0, 15, 8, 8);
+	Task_Create_Period(servoTask, 0, 50, 8, 0);
+	Task_Create_Period(roombaTask, 0, 50, 8, 8);
 //	Task_Create_Period(test_periodic, 0, 15, 4, 0);
 //	Task_Create_Period(test_ping, 0, 15, 1, 5);
 
