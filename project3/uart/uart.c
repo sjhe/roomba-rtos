@@ -9,16 +9,19 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "../src/led_test.h"
 
 #define UART_BUFFER_SIZE    32
+#define TX_BUFFER_SIZE      64
+
+
+static volatile uint8_t uart_buffer[UART_BUFFER_SIZE];
+static volatile uint8_t uart_buffer_index;
 
 // ATMega2560 has 4 USART interfaces
 // UART0 is the line that is used by the USB plug??
 // UART1 is the interface that we are using for this one...
 
-
-static volatile uint8_t uart_buffer[UART_BUFFER_SIZE];
-static volatile uint8_t uart_buffer_index;
 
 void UART_Init0(uint32_t baud_rate) {
     // Set baud rate
@@ -30,8 +33,7 @@ void UART_Init0(uint32_t baud_rate) {
 
 void UART_Transmit0(unsigned char data) {
     // Busy wait for empty transmit buffer
-    while (!(UCSR0A & _BV(UDRE0)))
-        ;
+    while (!(UCSR0A & _BV(UDRE0)));
     // Put data into buffer, sends the data
     UDR0 = data;
 }
@@ -112,7 +114,7 @@ void Roomba_Send_String(char *string_out){
 
 void Bluetooth_UART_Init(){   
 
-    UCSR1B = (1 << RXEN1 ) | (1 << TXEN1 ); // Turn on the transmission and reception circuitry
+    UCSR1B = (1 << RXEN1 ) | (1 << TXEN1 ) | (1 << RXCIE1); // Turn on the transmission and reception circuitry
     
     UCSR1C =  (1 << UCSZ10 ) | (1 << UCSZ11 ); // Use 8- bit character sizes    
     
@@ -121,6 +123,8 @@ void Bluetooth_UART_Init(){
     UBRR1L = BAUD_PRESCALE ; // Load lower 8 - bits of the baud rate value into the low byte of the UBRR register
 
 	UCSR1A &= ~(1<<U2X1);
+
+    // sei();  
 }
 
 void Bluetooth_Send_Byte(uint8_t data_out){      
@@ -155,17 +159,27 @@ void uart_reset_receive(void)
     uart_buffer_index = 0;
 }
 
-// // /**
-// //  * UART receive byte ISR
-// //  */
-// ISR(USART1_RX_vect)
-// {
-//     // FEn - frame error
-//     // DORn - data overrun
-//     // UPEn - uart pairty error
-//     uart_buffer[uart_buffer_index] = UDR1;
-//     uart_buffer_index = (uart_buffer_index + 1) % UART_BUFFER_SIZE;
-// }
+// /**
+//  * UART receive byte ISR
+//  */
+
+
+ISR(USART1_RX_vect)
+{
+    // FEn - frame error
+    // DORn - data overrun
+    // UPEn - uart pairty error
+    // char ReceiveByte;
+    // ReceiveByte = UDR1;
+    // if(ReceiveByte == '*'){
+    //     UDR0 = '\n'; // print byte to serial 0
+    // }else{
+    //     UDR0 = ReceiveByte; // print byte to serial 0    
+    // }
+    
+    uart_buffer[uart_buffer_index] = UDR1;
+    uart_buffer_index = (uart_buffer_index + 1) % UART_BUFFER_SIZE;
+}
 
 uint8_t uart_get_byte(int index)
 {

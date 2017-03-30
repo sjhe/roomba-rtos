@@ -8,6 +8,8 @@
 #include "./uart/uart.h"
 #include "./src/led_test.h"
 
+#include "./uart/uart.h"
+
 
 
 uint8_t LASER = 0;
@@ -440,20 +442,78 @@ void Bluetooth_Send() {
 	}
 }
 
+struct servoState {
+	int x; 
+	int y;
+	int laserState;
+} servoBuffer ;
+
+
+
 // ------------------------------ BLUETOOTH RECIEVE ------------------------------ //
 void Bluetooth_Receive() {
-
+	int i;
+	char command[32];
 	for (;;) // Loop forever
 	{
-		unsigned char ReceivedByte ;
+		// // unsigned char ReceivedByte ;
+		uint8_t bytes_received =  uart_bytes_received();
 
-		while (( UCSR1A & (1 << RXC1 )) == 0) {}; // Do nothing until data have been received and is
+		uint8_t receive_byte;
+
+		memset(command, '\0' , 32);
+
+		for(i = 0; i < bytes_received; i++){
+			receive_byte = uart_get_byte(i);
+			command[i] = receive_byte;
+			if(receive_byte == '*'){
+				// uint8_t first_byte = uart_get_byte(0);
+				command[i] = '\0';
+
+				int count = 0;
+				char* token = strtok(command, ",");
+
+				while( token != NULL ) 
+			  {
+			  	UART_print("%d\n", count);
+			  	UART_print("%s\n", token);
+			    token = strtok(NULL, ",");
+			    count++;
+			  } 
+			}
+				
+
+				// Write(servoChannel, 1);
+
+
+				// int x;
+				// int y;
+				// int laserState;
+				// if('s' == tmp){
+				// 	 UDR0 = 'G';
+				// 	 _delay_ms(1);
+				// 	 UDR0 = bytes_received;
+				// }
+    		// Put data into buffer, sends the data
+    		// UDR0 = '\n';
+	
+			// else{
+			// 	// UDR0 = receive_byte;
+			// 	// UART_print("%c ", receive_byte);
+			// }
+		}
+		// while (( UCSR1A & (1 << RXC1 )) == 0) {}; // Do nothing until data have been received and is
 		// ready to be read from UDR
-		ReceivedByte = UDR1 ; // Fetch the received byte value into the variable " ByteReceived "
-		UART_print("%c\n", ReceivedByte);
+		// ReceivedByte = UDR1 ; // Fetch the received byte value into the variable " ByteReceived "
+		// uart_bytes_received
+		// UART_print("%c ", ReceivedByte);
+		// if(ReceivedByte == '*'){
+		// 	UART_print("\n");
+		// }
 		// while (( UCSRA & (1 << UDRE )) == 0) {}; // Do nothing until UDR is ready for more data to
 		// // be written to it
 		// UDR = ReceivedByte;
+		uart_reset_receive();
 		Task_Next();
 	}
 }
@@ -485,6 +545,8 @@ void a_main() {
 	// laserState = ON;
 	// Initialize Bluetooth and Roomba UART
 	Bluetooth_UART_Init();
+
+	init_LED_ON_BOARD();
 	// Roomba_UART_Init();
 	// ADC_init();
 	// Servo_Init();
@@ -504,7 +566,7 @@ void a_main() {
 	UART_Init0(9200);
 	// Create Tasks
 	// IdlePID 					      = Task_Create_Idle(Idle , 1);
-	BluetoothReceivePID  = Task_Create_Period(Bluetooth_Receive, 2, 20, 0, 0 );
+	BluetoothReceivePID  = Task_Create_Period(Bluetooth_Receive, 2, 10, 0, 0 );
 	// BluetoothSendPID 			= Task_Create(Bluetooth_Send, 2, 3);
 
 
