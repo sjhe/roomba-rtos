@@ -13,7 +13,9 @@
 
 #define TX_BUFFER_SIZE 64
 
-#define MYBRR(baud_rate) (F_CPU / 16 / (baud_rate) - 1)
+#define USART_BAUDRATE 9600
+
+#define BAUD_PRESCALE (((( F_CPU / 16) + ( USART_BAUDRATE / 2) ) / ( USART_BAUDRATE )) - 1)
 
 void UART_Init0(uint32_t baud_rate);
 void UART_Transmit0(unsigned char data);

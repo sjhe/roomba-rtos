@@ -22,7 +22,7 @@ static volatile uint8_t uart_buffer_index;
 
 void UART_Init0(uint32_t baud_rate) {
     // Set baud rate
-    UBRR0 = MYBRR(baud_rate);
+    UBRR0 = BAUD_PRESCALE;
     // Enable receiver and transmitter
     UCSR0B = _BV(TXEN0) | _BV(RXEN0);
     // Default frame format: 8 data, 1 stop bit , no parity
@@ -111,20 +111,14 @@ void Roomba_Send_String(char *string_out){
 }
 
 void Bluetooth_UART_Init(){   
-    // Set baud rate to 9600
-    UBRR1 = 207;
+
+    UCSR1B = (1 << RXEN1 ) | (1 << TXEN1 ); // Turn on the transmission and reception circuitry
     
-    // Enable transmitter, receiver, enable interrupt
-    // UCSR1B = (1<<RXEN1) | (1<<TXEN1);
-
-    // Enable transmitter, receiver, enable interrupt
-    UCSR1B = (1<<TXEN1) | (1 << RXEN1) ; //| ( 1 << RXCIE1);
-
-    // 8-bit data
-    UCSR1C = ((1<<UCSZ11)|(1<<UCSZ10));
-
-    // disable 2x speed
-    // UCSR1A &= ~(1<<U2X1);
+    UCSR1C =  (1 << UCSZ10 ) | (1 << UCSZ11 ); // Use 8- bit character sizes    
+    
+    UBRR1H = ( BAUD_PRESCALE >> 8) ; // Load upper 8- bits of the baud rate value into the high byte of the UBRR register
+    
+    UBRR1L = BAUD_PRESCALE ; // Load lower 8 - bits of the baud rate value into the low byte of the UBRR register
 }
 
 void Bluetooth_Send_Byte(uint8_t data_out){      

@@ -8,6 +8,8 @@
 #include "./uart/uart.h"
 #include "./src/led_test.h"
 
+
+
 uint8_t LASER = 0;
 uint8_t SERVO = 1;
 uint8_t PHOTO = 2;
@@ -438,61 +440,20 @@ void Bluetooth_Send() {
 	}
 }
 
-// void old_bluetooth_receive(){
-// 	uint8_t flag;
-// 	flag = Bluetooth_Receive_Byte();
-
-// 		if (flag == LASER){
-// 			Send(laserChannel,1);
-
-// 			laser_data = Bluetooth_Receive_Byte();
-// 			buffer_enqueue(laser_data, laserQueue, &laserFront, &laserRear);
-
-// 			Recv(laserChannel);
-// 		}
-
-// 		else if (flag == SERVO){
-// 			Send(servoChannel, 1);
-
-// 			servo_data1 = Bluetooth_Receive_Byte();
-// 			servo_data2 = Bluetooth_Receive_Byte();
-// 			servo_data = ( ((servo_data1)<<8) | (servo_data2) );
-
-// 			buffer_enqueue(servo_data, servoQueue, &servoFront, &servoRear);
-
-// 			Recv(servoChannel);
-// 		}
-
-// 		else if (flag == ROOMBA) {
-// 			roomba_data = Bluetooth_Receive_Byte();
-// 			buffer_enqueue(roomba_data, roombaQueue, &roombaFront, &roombaRear);
-// 		}
-
-// 		else if (flag == MODE) {
-// 			if(AUTO == 1){
-// 				AUTO = 0;
-// 				while(!buffer_isEmpty(&roombaFront,&roombaRear)) {
-// 					buffer_dequeue(roombaQueue, &roombaFront, &roombaRear);
-// 				}
-// 			}
-// 			else {
-// 				AUTO = 1;
-// 			}
-// 		}
-
-// 		else {
-// 			continue;
-// 		}
-// }
-
 // ------------------------------ BLUETOOTH RECIEVE ------------------------------ //
 void Bluetooth_Receive() {
-	for(;;){
-		if(( UCSR1A & (1<<RXC1))) {
-			uint8_t byte = Bluetooth_Receive_Byte();
-			// _delay_ms(8);
-			UART_print("%d\n", byte);	
-		}
+
+	for (;;) // Loop forever
+	{
+		unsigned char ReceivedByte ;
+
+		while (( UCSR1A & (1 << RXC1 )) == 0) {}; // Do nothing until data have been received and is
+		// ready to be read from UDR
+		ReceivedByte = UDR1 ; // Fetch the received byte value into the variable " ByteReceived "
+		UART_print("%c\n", ReceivedByte);
+		// while (( UCSRA & (1 << UDRE )) == 0) {}; // Do nothing until UDR is ready for more data to
+		// // be written to it
+		// UDR = ReceivedByte;
 		Task_Next();
 	}
 }
@@ -543,7 +504,7 @@ void a_main() {
 	UART_Init0(9200);
 	// Create Tasks
 	// IdlePID 					      = Task_Create_Idle(Idle , 1);
-	BluetoothReceivePID  = Task_Create_System(Bluetooth_Receive, 1);
+	BluetoothReceivePID  = Task_Create_Period(Bluetooth_Receive, 2, 20, 0, 0 );
 	// BluetoothSendPID 			= Task_Create(Bluetooth_Send, 2, 3);
 
 
