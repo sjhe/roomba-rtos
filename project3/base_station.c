@@ -11,7 +11,7 @@
 #define JOYSTICK_R_Y_PIN 3		// analog 3
 
 #define JOYSTICK_S_BUTTON_PIN 4
-#define JOYSTICK_R_BUTTON_PIN 36
+#define JOYSTICK_R_BUTTON_PIN 5
 
 void setup_controllers()
 {
@@ -91,39 +91,53 @@ void test_ping(){
 	}
 }
 
-int readAnalog(unsigned int pin_mask)
+int mapVal(int val, int inLowerBound, int inUpperBound, int outLowerBound, int outUpperBound) 
 {
-
-	return 0;
+	return (val - inLowerBound) * (outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) + outLowerBound;
 }
 
-void createRoombaCommand(char* dest, char* inputCommand, int rx, int ry)
-{
-		strcat(dest, inputCommand);
+int calculateJoystickVal(int val) {
+	int deadzone = 2;
+	int retVal = mapVal(val, 0, 255, -10, 10);
+	// set deadzone,.
+	if (retVal < deadzone && retVal > -deadzone)
+	{
+		retVal = 0;
+	}
 
-		char speedBuffer[4] = "";
+	return retVal;
+}
+
+void createCommand(char* dest, char* inputCommand, int* values, int values_size) {
+	strcat(dest, inputCommand);
+
+	char speedBuffer[4] = "";
+	int i = 0;
+	for (i = 0; i < values_size; i++) {
 		strcat(dest, ",");
-		sprintf(speedBuffer, "%d", rx);
+		sprintf(speedBuffer, "%d", values[i]);
 		strcat(dest, speedBuffer);
-
 		speedBuffer[0] = '\0';
-		strcat(dest, ",");
-		sprintf(speedBuffer, "%d", ry);
-		strcat(dest, speedBuffer);
-
-		strcat(dest, "*");  
+	}
+		
+	strcat(dest, "*");  
 }
 
 void roombaTask()
 {
 	char bt_command[16] = "";
 	char bt_last_command[16] = "";
+	const int BUFFER_SIZE = 2;
+	int command_values[BUFFER_SIZE];
 	for(;;){
 		int joystick_rx = read_analog(JOYSTICK_R_X_PIN);
 		int joystick_ry = read_analog(JOYSTICK_R_Y_PIN);
+
+		command_values[0] = calculateJoystickVal(joystick_rx);
+		command_values[1] = -calculateJoystickVal(joystick_ry);
 		
 		bt_command[0] = '\0';
-		createRoombaCommand(bt_command, "r", joystick_rx, joystick_ry);
+		createCommand(bt_command, "r", command_values, BUFFER_SIZE);
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
@@ -133,50 +147,42 @@ void roombaTask()
 		
 		strcpy(bt_last_command, bt_command);
 
-		led_toggle(LED_PING);
 		Task_Next();
 	}
-}
-
-void createServoCommand(char* dest, char* inputCommand, int sx, int sy, int laserState)
-{
-		strcat(dest, inputCommand);
-
-		char speedBuffer[4] = "";
-		strcat(dest, ",");
-		sprintf(speedBuffer, "%d", sx);
-		strcat(dest, speedBuffer);
-
-		speedBuffer[0] = '\0';
-		strcat(dest, ",");
-		sprintf(speedBuffer, "%d", sy);
-		strcat(dest, speedBuffer);
-	
-		speedBuffer[0] = '\0';
-		strcat(dest, ",");
-		sprintf(speedBuffer, "%d", laserState);
-		strcat(dest, speedBuffer);
-
-		strcat(dest, "*");  
 }
 
 void servoTask()
 {
 	char bt_command[16] = "";
 	char bt_last_command[16] = "";
+	const int BUFFER_SIZE = 3;
+	int command_values[BUFFER_SIZE];
 	for (;;)
 	{
 		int joystick_sx = read_analog(JOYSTICK_S_X_PIN);
 		int joystick_sy = read_analog(JOYSTICK_S_Y_PIN);
-		int joystick_button = read_analog(JOYSTICK_S_BUTTON_PIN) > 0 ? 1 : 0;
+		int joystick_button = read_analog(JOYSTICK_S_BUTTON_PIN) > 10 ? 1 : 0;
+
+		command_values[0] = calculateJoystickVal(joystick_sx);
+		command_values[1] = -calculateJoystickVal(joystick_sy);
+		command_values[2] = joystick_button;
 
 		bt_command[0] = '\0';
-		createServoCommand(bt_command, "s", joystick_sx, joystick_sy, joystick_button);
+		createCommand(bt_command, "s", command_values, BUFFER_SIZE);
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
 			UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
+		}
+
+		if (joystick_button == 0)
+		{
+			enable_LED(LED_PING);
+		}
+		else 
+		{
+			disable_LEDs();
 		}
 		
 		strcpy(bt_last_command, bt_command);
@@ -188,6 +194,7 @@ void servoTask()
 void a_main()
 {
 //	init_pins();
+
 	Bluetooth_UART_Init(); 
 	UART_Init0(9600);
     UART_print("\r\nSTART\r\n");
@@ -198,8 +205,8 @@ void a_main()
 
 
 	Task_Create_Period(servoTask, 0, 15, 8, 0);
+	Task_Create_Period(roombaTask, 0, 15, 8, 8);
 //	Task_Create_Period(test_periodic, 0, 15, 4, 0);
 //	Task_Create_Period(test_ping, 0, 15, 1, 5);
-	Task_Create_Period(roombaTask, 0, 15, 7, 8);
 
 }
