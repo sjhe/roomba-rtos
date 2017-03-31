@@ -116,7 +116,7 @@ int calculateJoystickVal(int val) {
 void createCommand(char* dest, char* inputCommand, int* values, int values_size) {
 	strcat(dest, inputCommand);
 
-	char speedBuffer[4] = "";
+	char speedBuffer[8] = "";
 	int i = 0;
 	for (i = 0; i < values_size; i++) {
 		strcat(dest, ",");
@@ -128,18 +128,48 @@ void createCommand(char* dest, char* inputCommand, int* values, int values_size)
 	strcat(dest, "*");  
 }
 
+int getJoyStickPercentage(int x, int maxStep, int deadZone) {
+  int mapped  = mapVal(x, 0 , 255, -maxStep, maxStep);
+  if (-deadZone <= mapped && mapped <= deadZone) {
+    mapped = 0;
+  }
+
+  return mapped;
+}
+
+
 void roombaTask()
 {
-	char bt_command[16] = "";
-	char bt_last_command[16] = "";
+	char bt_command[32] = "";
+	char bt_last_command[32] = "";
 	const int BUFFER_SIZE = 2;
 	int command_values[BUFFER_SIZE];
 	for(;;){
 		int joystick_rx = read_analog(JOYSTICK_R_X_PIN);
 		int joystick_ry = read_analog(JOYSTICK_R_Y_PIN);
 
-		command_values[0] = calculateJoystickVal(joystick_rx);
-		command_values[1] = -calculateJoystickVal(joystick_ry);
+		int vel = -calculateJoystickVal(joystick_ry);
+		int radius = calculateJoystickVal(joystick_rx);
+
+//		int drivePower = my;
+//		int angle = 2000;
+//
+//		if (joystick_rx < 127) angle = mapVal(joystick_rx, 0, 127, 200, 2000);
+//		else angle = mapVal(joystick_rx, 127, 255, -2000, -200);
+//
+//		if (angle > 1700) angle = 8000;
+//		else if (angle < -1700) angle = -8000;
+//
+//		if (my == 0)
+//		{
+//			drivePower = mx < 0 ? mx : -mx;
+//			angle = angle < 0 ? 1 : -1;
+//		}
+
+//		command_values[0] = calculateJoystickVal(joystick_rx);
+//		command_values[1] = -calculateJoystickVal(joystick_ry);
+		command_values[0] = vel * 30;
+		command_values[1] = radius;
 		
 		bt_command[0] = '\0';
 		createCommand(bt_command, "r", command_values, BUFFER_SIZE);
