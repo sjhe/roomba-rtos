@@ -4,6 +4,7 @@
 #include "uart/uart.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #define JOYSTICK_S_X_PIN 0		// analog 0
 #define JOYSTICK_S_Y_PIN 1		// analog 1
@@ -96,11 +97,11 @@ void test_ping(){
 	}
 }
 
-int mapVal(int val, int inLowerBound, int inUpperBound, int outLowerBound, int outUpperBound) 
+int mapVal(float val, float inLowerBound, float inUpperBound, float outLowerBound, float outUpperBound) 
 {
 	//output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
-	return outLowerBound + ((outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) * (val - inLowerBound))
-	// return (val - inLowerBound) * (outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) + outLowerBound;
+//	return outLowerBound + ((outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) * (val - inLowerBound));
+	return (val - inLowerBound) * (outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) + outLowerBound;
 }
 
 int calculateJoystickVal(int val) {
@@ -146,32 +147,29 @@ void roombaTask()
 	char bt_last_command[32] = "";
 	const int BUFFER_SIZE = 2;
 	int command_values[BUFFER_SIZE];
+
+	int maxSpeed = 300;
 	for(;;){
-		int joystick_rx = read_analog(JOYSTICK_R_X_PIN);
-		int joystick_ry = read_analog(JOYSTICK_R_Y_PIN);
+		int joystickX = read_analog(JOYSTICK_R_X_PIN);
+		int joystickY = read_analog(JOYSTICK_R_Y_PIN);
 
-		int vel = -calculateJoystickVal(joystick_ry);
-		int radius = calculateJoystickVal(joystick_rx);
+		float mx = getJoyStickPercentage(joystickX, maxSpeed, 100);
+		float my = getJoyStickPercentage(joystickY, maxSpeed, 100);
 
-//		int drivePower = my;
-//		int angle = 2000;
-//
-//		if (joystick_rx < 127) angle = mapVal(joystick_rx, 0, 127, 200, 2000);
-//		else angle = mapVal(joystick_rx, 127, 255, -2000, -200);
-//
-//		if (angle > 1700) angle = 8000;
-//		else if (angle < -1700) angle = -8000;
-//
-//		if (my == 0)
-//		{
-//			drivePower = mx < 0 ? mx : -mx;
-//			angle = angle < 0 ? 1 : -1;
-//		}
+		int drivePower = sqrt(mx * mx + my * my);
+		if (drivePower > maxSpeed) drivePower = maxSpeed;
+		if (my > 0) drivePower *= -1;
 
-//		command_values[0] = calculateJoystickVal(joystick_rx);
-//		command_values[1] = -calculateJoystickVal(joystick_ry);
-		command_values[0] = vel * 30;
-		command_values[1] = radius;
+		int angle = 2000;
+
+		if (joystickX < 120) angle = mapVal(joystickX, 0, 127, 200, 2000);
+		else if (joystickX > 133) angle = mapVal(joystickX, 127, 255, -2000, -200);
+
+		if (angle > 1700) angle = 8000;
+		else if (angle < -1700) angle = -8000;
+
+		command_values[0] = drivePower;
+		command_values[1] = angle;
 		
 		bt_command[0] = '\0';
 		createCommand(bt_command, "r", command_values, BUFFER_SIZE);
@@ -241,8 +239,8 @@ void a_main()
 	init_LED_PING();
 
 
-	Task_Create_Period(servoTask, 0, 10, 8, 0);
-	Task_Create_Period(roombaTask, 0, 10, 8, 8);
+	Task_Create_Period(servoTask, 0, 10, 5, 0);
+	Task_Create_Period(roombaTask, 0, 10, 5, 6);
 //	Task_Create_Period(test_periodic, 0, 15, 4, 0);
 //	Task_Create_Period(test_ping, 0, 15, 1, 5);
 

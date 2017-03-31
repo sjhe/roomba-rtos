@@ -382,7 +382,7 @@ void OS_Abort(unsigned int error)
 			for (i = 0; i <= 6; i++)
 			{
 				led_toggle(LED_ON_BOARD);
-				_delay_ms(1000);
+				_delay_ms(50);
 			}
 			break;
 		case PERIODIC_TASK_WCET_GREATER_PERIOD:
