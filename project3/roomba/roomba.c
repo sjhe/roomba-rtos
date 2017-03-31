@@ -43,9 +43,9 @@ void Roomba_Init(){
 
 void Roomba_Drive(int16_t velocity, int16_t radius) {    
     Roomba_Send_Byte(DRIVE);
-    // Roomba_Send_Byte(velocity>>8);
+    Roomba_Send_Byte(velocity>>8);
     Roomba_Send_Byte(velocity);
-    // Roomba_Send_Byte(radius>>8);
+    Roomba_Send_Byte(radius>>8);
     Roomba_Send_Byte(radius);   
 }
 

@@ -242,6 +242,8 @@ void Manual_Drive() {
 	int radius = roombaBuffer.radius;
 	int speed  = roombaBuffer.speed;
 
+//	UART_print("roomba : %d, %d\n", speed, radius);
+
 	Roomba_Drive(speed,radius); // Forward-Left
 }
 // ------------------------------ AUTO DRIVE ------------------------------ //
@@ -251,8 +253,10 @@ void Auto_Drive() {
 
 // ------------------------------ ROOMBA TASK ------------------------------ //
 void Roomba_Task() {
-	roombaBuffer.radius = 0;
-	roombaBuffer.speed = 0;
+
+	// ????????????? WTF??????
+//	roombaBuffer.radius = 0;
+//	roombaBuffer.speed = 0;
 	for(;;) {
 		Manual_Drive();
 		Task_Next();

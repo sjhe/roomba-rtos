@@ -148,13 +148,16 @@ void roombaTask()
 	const int BUFFER_SIZE = 2;
 	int command_values[BUFFER_SIZE];
 
+	int minSpeed = 100;
 	int maxSpeed = 300;
+	int minTurnRadius = 100;
+	int maxTurnRadius = 2000;
 	for(;;){
 		int joystickX = read_analog(JOYSTICK_R_X_PIN);
 		int joystickY = read_analog(JOYSTICK_R_Y_PIN);
 
-		float mx = getJoyStickPercentage(joystickX, maxSpeed, 100);
-		float my = getJoyStickPercentage(joystickY, maxSpeed, 100);
+		float mx = getJoyStickPercentage(joystickX, maxSpeed, minSpeed);
+		float my = getJoyStickPercentage(joystickY, maxSpeed, minSpeed);
 
 		int drivePower = sqrt(mx * mx + my * my);
 		if (drivePower > maxSpeed) drivePower = maxSpeed;
@@ -162,14 +165,17 @@ void roombaTask()
 
 		int angle = 2000;
 
-		if (joystickX < 120) angle = mapVal(joystickX, 0, 127, 200, 2000);
-		else if (joystickX > 133) angle = mapVal(joystickX, 127, 255, -2000, -200);
+		if (joystickX < 127) angle = mapVal(joystickX, 0, 127, minTurnRadius, maxTurnRadius);
+		else angle = mapVal(joystickX, 127, 255, -maxTurnRadius, -minTurnRadius);
 
 		if (angle > 1700) angle = 8000;
 		else if (angle < -1700) angle = -8000;
 
-		command_values[0] = drivePower;
-		command_values[1] = angle;
+		if (joystickX < 30 && my == 0) angle = 1;
+		else if (joystickX > 230 && my == 0) angle = -1;
+
+		command_values[1] = drivePower;
+		command_values[0] = angle;
 		
 		bt_command[0] = '\0';
 		createCommand(bt_command, "r", command_values, BUFFER_SIZE);
