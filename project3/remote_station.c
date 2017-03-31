@@ -55,9 +55,6 @@ typedef enum servo_states {
     FULL_FORWARD
 } SERVO_STATES;
 
-// Queue globals
-#define QSize 	10
-
 // Channels
 CHAN laserChannel;
 CHAN servoChannel;
@@ -253,10 +250,6 @@ void Auto_Drive() {
 
 // ------------------------------ ROOMBA TASK ------------------------------ //
 void Roomba_Task() {
-
-	// ????????????? WTF??????
-//	roombaBuffer.radius = 0;
-//	roombaBuffer.speed = 0;
 	for(;;) {
 		Manual_Drive();
 		Task_Next();
