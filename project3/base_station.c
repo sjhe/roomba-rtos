@@ -12,7 +12,7 @@
 #define JOYSTICK_R_Y_PIN 3		// analog 3
 
 #define JOYSTICK_S_BUTTON_PIN PC0
-#define JOYSTICK_R_BUTTON_PIN 5
+//#define JOYSTICK_R_BUTTON_PIN 5
 
 void setup_controllers()
 {
@@ -83,37 +83,30 @@ int read_digital_pinc(uint8_t channel)
 	return PINC & (1 << channel);
 }
 
-void test_periodic(){
-	for(;;){
-		led_toggle(LED_ON_BOARD);
-		Task_Next();
-	}
-}
-
-void test_ping(){
-	for(;;){
-		led_toggle(LED_PING);
-		Task_Next();
-	}
-}
-
 int mapVal(float val, float inLowerBound, float inUpperBound, float outLowerBound, float outUpperBound) 
 {
-	//output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
-//	return outLowerBound + ((outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) * (val - inLowerBound));
 	return (val - inLowerBound) * (outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) + outLowerBound;
 }
 
 int calculateJoystickVal(int val) {
 	int deadzone = 2;
 	int retVal = mapVal(val, 0, 255, -10, 10);
-	// set deadzone,.
+	// set deadzone
 	if (retVal < deadzone && retVal > -deadzone)
 	{
 		retVal = 0;
 	}
 
 	return retVal;
+}
+
+int getJoyStickPercentage(int x, int maxStep, int deadZone) {
+  int mapped  = mapVal(x, 0 , 255, -maxStep, maxStep);
+  if (-deadZone <= mapped && mapped <= deadZone) {
+    mapped = 0;
+  }
+
+  return mapped;
 }
 
 void createCommand(char* dest, char* inputCommand, int* values, int values_size) {
@@ -131,16 +124,6 @@ void createCommand(char* dest, char* inputCommand, int* values, int values_size)
 	strcat(dest, "*");  
 }
 
-int getJoyStickPercentage(int x, int maxStep, int deadZone) {
-  int mapped  = mapVal(x, 0 , 255, -maxStep, maxStep);
-  if (-deadZone <= mapped && mapped <= deadZone) {
-    mapped = 0;
-  }
-
-  return mapped;
-}
-
-
 void roombaTask()
 {
 	char bt_command[32] = "";
@@ -148,10 +131,10 @@ void roombaTask()
 	const int BUFFER_SIZE = 2;
 	int command_values[BUFFER_SIZE];
 
-	int minSpeed = 100;
-	int maxSpeed = 300;
-	int minTurnRadius = 100;
-	int maxTurnRadius = 2000;
+	const int minSpeed = 100;
+	const int maxSpeed = 500;
+	const int minTurnRadius = 100;
+	const int maxTurnRadius = 2000;
 	for(;;){
 		int joystickX = read_analog(JOYSTICK_R_X_PIN);
 		int joystickY = read_analog(JOYSTICK_R_Y_PIN);
@@ -182,7 +165,7 @@ void roombaTask()
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-			UART_print("%s\n", bt_command);
+		//	UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
 		}
 		
@@ -213,7 +196,7 @@ void servoTask()
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-			UART_print("%s\n", bt_command);
+		//	UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
 		}
 
@@ -234,8 +217,6 @@ void servoTask()
 
 void a_main()
 {
-//	init_pins();
-
 	Bluetooth_UART_Init(); 
 	UART_Init0(9600);
     UART_print("\r\nSTART\r\n");
@@ -247,7 +228,4 @@ void a_main()
 
 	Task_Create_Period(servoTask, 0, 10, 5, 0);
 	Task_Create_Period(roombaTask, 0, 10, 5, 6);
-//	Task_Create_Period(test_periodic, 0, 15, 4, 0);
-//	Task_Create_Period(test_ping, 0, 15, 1, 5);
-
 }
