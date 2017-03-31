@@ -98,7 +98,9 @@ void test_ping(){
 
 int mapVal(int val, int inLowerBound, int inUpperBound, int outLowerBound, int outUpperBound) 
 {
-	return (val - inLowerBound) * (outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) + outLowerBound;
+	//output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
+	return outLowerBound + ((outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) * (val - inLowerBound))
+	// return (val - inLowerBound) * (outUpperBound - outLowerBound) / (inUpperBound - inLowerBound) + outLowerBound;
 }
 
 int calculateJoystickVal(int val) {
