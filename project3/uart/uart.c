@@ -76,8 +76,6 @@ void UART_send_raw_bytes(const uint8_t num_bytes, const uint8_t* data) {
 }
 
 // Project 3 
-
-
 void Roomba_UART_Init(){   
     // Set baud rate to 19.2k
     UBRR3 = 0x33;
