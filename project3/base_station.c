@@ -165,7 +165,7 @@ void roombaTask()
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-		//	UART_print("%s\n", bt_command);
+	//		UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
 		}
 		
@@ -188,7 +188,7 @@ void servoTask()
 		int joystick_button = read_digital_pinc(JOYSTICK_S_BUTTON_PIN);//read_analog(JOYSTICK_S_BUTTON_PIN);// > 10 ? 1 : 0;
 
 		command_values[0] = calculateJoystickVal(joystick_sx);
-		command_values[1] = -calculateJoystickVal(joystick_sy);
+		command_values[1] = calculateJoystickVal(joystick_sy);
 		command_values[2] = joystick_button;
 
 		bt_command[0] = '\0';
