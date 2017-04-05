@@ -132,13 +132,6 @@ void Bluetooth_Send_Byte(uint8_t data_out){
     UDR1 = data_out;
 }
 
-unsigned char Bluetooth_Receive_Byte(){      
-    // Wait for data to be received
-    while(!( UCSR1A & (1<<RXC1)));
-    // Get and return data from buffer
-    return UDR1;
-}
-
 void Bluetooth_Send_String(char *string_out){
     for(; *string_out; string_out++){
     //    _delay_ms(4);
