@@ -158,11 +158,13 @@ int update_ServoState(int lastServoState, int angle, int servo_num ){
 		// Update X
 	if(servo_num == X){
 		OCR4A = lastServoState;	
+		// _delay_ms(5);
 	}
 	// Update Y
 	if(servo_num == Y){
 		// UART_print("lastServoState %d\n", lastServoState);
 		OCR4B = lastServoState;	
+		// _delay_ms(5);
 		// OCR5A = lastServoState;	
 	}		
 	return lastServoState;
