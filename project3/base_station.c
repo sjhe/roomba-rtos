@@ -124,6 +124,33 @@ void createCommand(char* dest, char* inputCommand, int* values, int values_size)
 	strcat(dest, "*");  
 }
 
+int j = 0;
+char command[32];
+void debugRoomba() 
+{
+//	char command[32];
+	uint8_t bytes_received = uart_bytes_received();
+	uint8_t receive_byte;
+	int i = 0;
+	for (i = 0; i < bytes_received; i++)
+	{
+		receive_byte = uart_get_byte(i);
+//		UART_print("%c", receive_byte);
+		command[j++] = receive_byte;
+		if (receive_byte == '*') 
+		{
+			command[j] = '\0';
+			UART_print("Command : %s\n", command);
+
+			j = 0;
+			memset(command, '\0', 32);
+		}
+	}
+
+	uart_reset_receive();
+
+}
+
 void roombaTask()
 {
 	char bt_command[32] = "";
@@ -165,12 +192,14 @@ void roombaTask()
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-	//		UART_print("%s\n", bt_command);
+		//	UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
 		}
 		
 		strcpy(bt_last_command, bt_command);
 
+		//debugRoomba();
+	
 		Task_Next();
 	}
 }
@@ -187,8 +216,10 @@ void servoTask()
 		int joystick_sy = read_analog(JOYSTICK_S_Y_PIN);
 		int joystick_button = read_digital_pinc(JOYSTICK_S_BUTTON_PIN);//read_analog(JOYSTICK_S_BUTTON_PIN);// > 10 ? 1 : 0;
 
-		command_values[0] = calculateJoystickVal(joystick_sx);
-		command_values[1] = calculateJoystickVal(joystick_sy);
+//		command_values[0] = calculateJoystickVal(joystick_sx);
+//		command_values[1] = calculateJoystickVal(joystick_sy);
+		command_values[0] = getJoyStickPercentage(joystick_sx, 5, 1);
+		command_values[1] = -getJoyStickPercentage(joystick_sy, 5, 1);
 		command_values[2] = joystick_button;
 
 		bt_command[0] = '\0';
@@ -196,19 +227,10 @@ void servoTask()
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-		//	UART_print("%s\n", bt_command);
+			//UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
 		}
 
-		if (joystick_button == 0)
-		{
-			enable_LED(LED_PING);
-		}
-		else 
-		{
-			disable_LEDs();
-		}
-		
 		strcpy(bt_last_command, bt_command);
 
 		Task_Next();
