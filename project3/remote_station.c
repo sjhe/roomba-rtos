@@ -26,7 +26,6 @@ char roombaState;
 int volatile wallState;
 int volatile bumpState;
 
-
 int AUTO;
 
 typedef enum laser_states {
@@ -280,11 +279,11 @@ void send_to_base(char* bt_command, char* bt_last_command, int* command_values){
 
 // ------------------------------ GET SENSOR DATA ------------------------------ //
 void Get_Sensor_Data() {
-
 	for(;;) {
 		Roomba_QueryList(7, 13);
 		bumpState   = Roomba_Receive_Byte();
 		wallState   = Roomba_Receive_Byte();
+		// lightBumper = Roomba_Receive_Byte();
 		// UART_print("b:%d w:%d l:%d\n", bumpState, wallState, lightBumper);
 
 		if(bumpState >=  1 || wallState == 1 ){
@@ -352,17 +351,14 @@ void Manual_Drive() {
 //	UART_print("roomba : %d, %d\n", speed, radius);
 	Roomba_Drive(speed,radius); // Forward-Left
 }
-// ------------------------------ AUTO DRIVE ------------------------------ //
-void Auto_Drive() {
-	Roomba_Drive(ROOMBA_SPEED,DRIVE_STRAIGHT);
-}
 
 // ------------------------------ ROOMBA TASK ------------------------------ //
 void Roomba_Task() {
 	roombaBuffer.radius = 0;
 	roombaBuffer.speed = 0;
 	for(;;) {
-		Manual_Drive();
+		// Manual_Drive();
+		Roomba_Drive(roombaBuffer.speed , roombaBuffer.radius);
 		Task_Next();
 	}
 }
