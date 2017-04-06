@@ -26,6 +26,7 @@ char roombaState;
 int volatile wallState;
 int volatile bumpState;
 
+
 int AUTO;
 
 typedef enum laser_states {
@@ -198,24 +199,34 @@ void update_laser(){
 
 // Update the servo state given the input
 int update_ServoState(int lastServoState, int angle, int servo_num ){
-
-	if ( ( lastServoState + angle) <= 585 && (lastServoState + angle) >= 150 )  {
-		lastServoState += angle;
-	}else if( (lastServoState + angle ) < 150 ) {
-		lastServoState = 150;
-	}else if( (lastServoState + angle ) > 585 ){
-		lastServoState = 585;
-		// Ignore
-	}
-
-		// Update X
+	// Update X
 	if(servo_num == X){
+		int maxX = 525;
+		int minX = 175;
+		if ( ( lastServoState + angle) <= maxX && (lastServoState + angle) >= minX )  {
+			lastServoState += angle;
+		}else if( (lastServoState + angle ) < minX ) {
+			lastServoState = minX;
+		}else if( (lastServoState + angle ) > maxX ){
+			lastServoState = maxX;
+		}
+		// Update
 		OCR4A = lastServoState;	
 		// _delay_ms(5);
 	}
 	// Update Y
 	if(servo_num == Y){
+		int maxY = 450;
+		int minY = 250;
 		// UART_print("lastServoState %d\n", lastServoState);
+		if ( ( lastServoState + angle) <= maxY && (lastServoState + angle) >= minY )  {
+			lastServoState += angle;
+		}else if( (lastServoState + angle ) < minY ) {
+			lastServoState = minY;
+		}else if( (lastServoState + angle ) > maxY ){
+			lastServoState = maxY;
+		}
+
 		OCR4B = lastServoState;	
 		// _delay_ms(5);
 		// OCR5A = lastServoState;	
@@ -269,44 +280,29 @@ void send_to_base(char* bt_command, char* bt_last_command, int* command_values){
 
 // ------------------------------ GET SENSOR DATA ------------------------------ //
 void Get_Sensor_Data() {
-	char bt_command[16] = "";
-	char bt_last_command[16] = "";
-	int  command_values[3];
 
 	for(;;) {
 		Roomba_QueryList(7, 13);
-
-		if(( UCSR3A & (1<<RXC3)))
-			bumpState = Roomba_Receive_Byte();
-		
-
-		if(( UCSR3A & (1<<RXC3)))
-			wallState = Roomba_Receive_Byte();
-
-		// UART_print("b: %d w: %d\n", bumpState, wallState);
-
-		command_values[0] = bumpState;
-		command_values[1] = wallState;
-		command_values[2] = read_analog(0);
+		bumpState   = Roomba_Receive_Byte();
+		wallState   = Roomba_Receive_Byte();
+		// UART_print("b:%d w:%d l:%d\n", bumpState, wallState, lightBumper);
 
 		if(bumpState >=  1 || wallState == 1 ){
 			roombaState = 'X';
-			// Reverse();
-			unsigned int cur = Now() + 300;
-			while( Now() < cur ){
-				roombaBuffer.speed = -ROOMBA_SPEED;
+
+			unsigned int cur = Now() + 500;
+			roombaBuffer.speed = -ROOMBA_SPEED;
+
+			while( (int)(cur - Now()) > 0  ){
+				roombaBuffer.speed += 5;
 				roombaBuffer.radius = DRIVE_STRAIGHT;
 				Task_Next();
 			}
 			roombaBuffer.speed  = 0;
 			roombaBuffer.radius = 0;
+			bumpState   = 0;
+			wallState   = 0;
 		}
-
-		send_to_base(bt_command, bt_last_command, command_values);
-
-		strcpy(bt_last_command, bt_command);
-
-		bt_command[0] = '\0';
 
 		Task_Next();
 	}
@@ -477,19 +473,19 @@ void a_main() {
 
 	unsigned int currentTick = Now() / 10 ; 
 	// Initialize Values
-	wallState = 0;  
-	bumpState = 0;
+	wallState   = 0;  
+	bumpState   = 0;
 
 	UART_Init0(9600);
 
 	// Create Tasks
-	BluetoothReceivePID  = Task_Create_Period(Bluetooth_Receive, 2, 10, 2, currentTick );
+	BluetoothReceivePID  = Task_Create_Period(Bluetooth_Receive, 2, 9, 2, currentTick );
 
-	ServoTaskPID 				 = Task_Create_Period(Servo_Task, 3, 10, 2,  currentTick + 2 ); // Periodic
+	ServoTaskPID 				 = Task_Create_Period(Servo_Task, 3, 9, 2,  currentTick + 2 ); // Periodic
 
-	GetSensorDataTaskPID = Task_Create_Period(Get_Sensor_Data, 5, 10, 4, currentTick + 4);
+	GetSensorDataTaskPID = Task_Create_Period(Get_Sensor_Data, 5, 9, 3, currentTick + 4);
 
-	RoombaTaskPID 		   = Task_Create_Period(Roomba_Task, 4, 10, 2, currentTick + 8); // Periodic
+	RoombaTaskPID 		   = Task_Create_Period(Roomba_Task, 4, 9, 2, currentTick + 7); // Periodic
 
 
 	Task_Terminate();
