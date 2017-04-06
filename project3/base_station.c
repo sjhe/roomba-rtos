@@ -151,6 +151,13 @@ void debugRoomba()
 
 }
 
+int lerp(int a, int b, float t)
+{
+	if (t > 1) t = 1.0f;
+
+	return a + (b - a) * t;
+}
+
 void roombaTask()
 {
 	char bt_command[32] = "";
@@ -162,6 +169,8 @@ void roombaTask()
 	const int maxSpeed = 500;
 	const int minTurnRadius = 100;
 	const int maxTurnRadius = 2000;
+	int currentSpeed = 0;
+	float lerpTime = 0.0f;
 	for(;;){
 		int joystickX = read_analog(JOYSTICK_R_X_PIN);
 		int joystickY = read_analog(JOYSTICK_R_Y_PIN);
@@ -184,8 +193,17 @@ void roombaTask()
 		if (joystickX < 30 && my == 0) angle = 1;
 		else if (joystickX > 230 && my == 0) angle = -1;
 
+//		lerpTime += (drivePower == 0 ? 0.1f : 0.05f);
+//		if (currentSpeed == drivePower)
+//		{
+//			lerpTime = 0.0f;
+//		} 
+//
+//		currentSpeed = lerp(currentSpeed, drivePower, lerpTime);
+
+		command_values[0] = -angle;
+		//command_values[1] = currentSpeed;
 		command_values[1] = drivePower;
-		command_values[0] = angle;
 		
 		bt_command[0] = '\0';
 		createCommand(bt_command, "r", command_values, BUFFER_SIZE);
