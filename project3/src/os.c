@@ -374,7 +374,7 @@ void OS_Abort(unsigned int error)
 			for (i = 0; i < 6; i++)
 			{
 				led_toggle(LED_ON_BOARD);
-				_delay_ms(50);
+				_delay_ms(1000);
 			}
 			break;
 		case PERIODIC_TASK_TIMING_CONFLICT:
