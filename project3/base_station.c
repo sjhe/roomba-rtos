@@ -12,7 +12,7 @@
 #define JOYSTICK_R_Y_PIN 3		// analog 3
 
 #define JOYSTICK_S_BUTTON_PIN PC0
-//#define JOYSTICK_R_BUTTON_PIN 5
+//#define JOYSTICK_R_BUTTON_PIN PC1
 
 void setup_controllers()
 {
@@ -192,7 +192,7 @@ void roombaTask()
 
 		if (strcmp(bt_last_command, bt_command) != 0)
 		{
-		//	UART_print("%s\n", bt_command);
+			//UART_print("%s\n", bt_command);
 			Bluetooth_Send_String(bt_command);
 		}
 		
@@ -214,12 +214,10 @@ void servoTask()
 	{
 		int joystick_sx = read_analog(JOYSTICK_S_X_PIN);
 		int joystick_sy = read_analog(JOYSTICK_S_Y_PIN);
-		int joystick_button = read_digital_pinc(JOYSTICK_S_BUTTON_PIN);//read_analog(JOYSTICK_S_BUTTON_PIN);// > 10 ? 1 : 0;
-
-//		command_values[0] = calculateJoystickVal(joystick_sx);
-//		command_values[1] = calculateJoystickVal(joystick_sy);
-		command_values[0] = getJoyStickPercentage(joystick_sx, 5, 1);
-		command_values[1] = -getJoyStickPercentage(joystick_sy, 5, 1);
+		int joystick_button = read_digital_pinc(JOYSTICK_S_BUTTON_PIN);
+		
+		command_values[0] = -getJoyStickPercentage(joystick_sx, 3, 1);
+		command_values[1] = -getJoyStickPercentage(joystick_sy, 3, 1);
 		command_values[2] = joystick_button;
 
 		bt_command[0] = '\0';
@@ -247,7 +245,6 @@ void a_main()
 	init_LED_ON_BOARD();
 	init_LED_PING();
 
-
 	Task_Create_Period(servoTask, 0, 10, 5, 0);
-	Task_Create_Period(roombaTask, 0, 10, 5, 6);
+	Task_Create_Period(roombaTask, 0, 10, 4, 6);
 }
