@@ -105,6 +105,16 @@ void enablePORTH3() {
 void disablePORTH3() {
 	PORTL &= ~_BV(PORTH3);
 }
+
+// 
+
+int lerp(int a, int b, float t)
+{
+	if (t > 1) t = 1.0f;
+
+	return a + (b - a) * t;
+}
+
 /**
  * Read an analog value from a given channel. 
  * On the AT mega2560, there are 16 available channels, thus
@@ -287,20 +297,20 @@ void Get_Sensor_Data() {
 		// UART_print("b:%d w:%d l:%d\n", bumpState, wallState, lightBumper);
 
 		if(bumpState >=  1 || wallState == 1 ){
+			unsigned int cur = Now() + 1000;
 			roombaState = 'X';
-
-			unsigned int cur = Now() + 500;
+			roombaBuffer.radius = DRIVE_STRAIGHT;
 			roombaBuffer.speed = -ROOMBA_SPEED;
-
-			while( (int)(cur - Now()) > 0  ){
-				roombaBuffer.speed += 5;
-				roombaBuffer.radius = DRIVE_STRAIGHT;
+			AUTO = 1;
+			while( (int)(cur - Now()) > 0  ){				
 				Task_Next();
 			}
+
 			roombaBuffer.speed  = 0;
 			roombaBuffer.radius = 0;
 			bumpState   = 0;
 			wallState   = 0;
+			AUTO = 0;
 		}
 
 		Task_Next();
@@ -344,21 +354,34 @@ void Bump_Back() {
 }
 
 // ------------------------------ MANUAL DRIVE ------------------------------ //
-void Manual_Drive() {
+void Manual_Drive(float* lerpTime, int* currentSpeed ) {
 	int radius = roombaBuffer.radius;
 	int speed  = roombaBuffer.speed;
 
+	*lerpTime += (roombaBuffer.speed == 0 ? 0.1f : 0.05f);
+	if (roombaBuffer.speed == *currentSpeed)
+	{
+		*lerpTime = 0.0f;
+	}
+
+	*currentSpeed = lerp(*currentSpeed, roombaBuffer.speed , *lerpTime);
 //	UART_print("roomba : %d, %d\n", speed, radius);
-	Roomba_Drive(speed,radius); // Forward-Left
+	Roomba_Drive(*currentSpeed,radius); // Forward-Left
 }
 
 // ------------------------------ ROOMBA TASK ------------------------------ //
 void Roomba_Task() {
 	roombaBuffer.radius = 0;
 	roombaBuffer.speed = 0;
+	int currentSpeed = 0;
+	float lerpTime = 0.0f;
+
 	for(;;) {
-		// Manual_Drive();
-		Roomba_Drive(roombaBuffer.speed , roombaBuffer.radius);
+		if(AUTO == 0){
+			Manual_Drive(&lerpTime, &currentSpeed);	
+		}else{
+			Roomba_Drive(roombaBuffer.speed , roombaBuffer.radius);
+		}
 		Task_Next();
 	}
 }
@@ -466,6 +489,7 @@ void a_main() {
 	Roomba_Init();
 
 	// setup_controllers();
+	AUTO = 0;
 
 	unsigned int currentTick = Now() / 10 ; 
 	// Initialize Values
